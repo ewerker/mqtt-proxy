@@ -23,7 +23,7 @@ jobs:
           generate_release_notes: true
 
   build-windows-exe:
-    needs: release
+    # Remove needs: release so it still runs even if the release job is skipped
     runs-on: windows-latest
     steps:
       - name: Checkout repository
