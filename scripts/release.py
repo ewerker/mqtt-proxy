@@ -40,12 +40,33 @@ def update_readme(version):
     print(f"Updated README.md with version {version}")
     return readme_path
 
-def git_commit_and_tag(version, file_path):
+def update_version_py(version):
+    version_path = "version.py"
+    if not os.path.exists(version_path):
+        version_path = "../version.py"
+        if not os.path.exists(version_path):
+            print("version.py not found!")
+            sys.exit(1)
+            
+    with open(version_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    version_pattern = r'(__version__\s*=\s*)(["\'])(.*?)(["\'])'
+    new_content = re.sub(version_pattern, f'\\g<1>\\g<2>{version}\\g<4>', content)
+    
+    with open(version_path, "w", encoding="utf-8") as f:
+        f.write(new_content)
+        
+    print(f"Updated version.py with version {version}")
+    return version_path
+
+def git_commit_and_tag(version, files_to_commit):
     tag_name = f"v{version}"
     print(f"Creating git release for {tag_name}...")
     
     # Add changed files
-    run_command(f"git add {file_path}")
+    for file_path in files_to_commit:
+        run_command(f"git add {file_path}")
     
     # Commit
     commit_msg = f"chore: release {tag_name}"
@@ -67,11 +88,12 @@ def main():
     print(f"Preparing release {args.version}...")
     
     if args.dry_run:
-        print("[DRY RUN] Would update README.md")
+        print("[DRY RUN] Would update README.md and version.py")
         print(f"[DRY RUN] Would commit and tag v{args.version}")
     else:
-        updated_file = update_readme(args.version)
-        git_commit_and_tag(args.version, updated_file)
+        updated_readme = update_readme(args.version)
+        updated_version = update_version_py(args.version)
+        git_commit_and_tag(args.version, [updated_readme, updated_version])
 
 if __name__ == "__main__":
     main()

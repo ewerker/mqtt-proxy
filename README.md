@@ -2,6 +2,8 @@
 
 A production-ready MQTT proxy for Meshtastic devices that enables bidirectional message forwarding between Meshtastic nodes and MQTT brokers. Supports TCP and Serial interface connections with a clean factory pattern architecture.
 
+**Version**: 1.5.0
+
 ## Features
 
 - ✅ **Modular Architecture** - Clean separation of concerns with `config.py`, `handlers/mqtt.py`, `handlers/meshtastic.py`, and `handlers/queue.py`
@@ -147,6 +149,12 @@ SERIAL_PORT=/dev/ttyACM0
 docker compose logs -f mqtt-proxy
 ```
 
+### Subprocess Integration & Log Streaming
+
+If you are integrating `mqtt-proxy` as a child process inside another application (e.g., via Node.js `spawn` or `execFile`), you can pipe its output reliably. The proxy explicitly enforces **UTF-8 encoding** and **line-buffered streaming** for `sys.stdout` and `sys.stderr` when PIPED. 
+
+All proxy logs (including emojis) will stream instantly over standard IO without any buffering delays or Windows Console encoding crashes (`[WinError 10106]`).
+
 ### Stopping the Proxy
 
 ```bash
@@ -160,28 +168,59 @@ The Docker setup is designed for Linux and works out of the box for both TCP and
 
 ### Windows
 
-**TCP Interface:**
-Docker Desktop for Windows works perfectly for TCP connections. Use the standard `docker-compose.yml`.
+**Option 1: Self-Contained Executable (Click-and-Run - Recommended)**
+If you prefer not to manage Python environments or Docker on Windows, you can download a pre-built standalone `.exe` directly from the [GitHub Releases](https://github.com/LN4CY/mqtt-proxy/releases) page.
 
-**Serial Interface (USB):**
-Docker on Windows **does not support USB passthrough directly** because Docker runs in WSL2.
+1. Download the `mqtt-proxy-windows-amd64.exe` from the latest release.
+2. Open PowerShell or Command Prompt.
+3. Run the executable, passing your connection details as command-line arguments:
 
-**Option A: Run Natively with venv (Recommended)**
 ```powershell
-# Create and activate virtual environment
-python -m venv venv
-.\venv\Scripts\Activate.ps1
+# Example: Connecting to a MeshMonitor Virtual Node
+.\mqtt-proxy-windows-amd64.exe --interface tcp --tcp-host 127.0.0.1 --tcp-port 4404
 
-# Install dependencies
-pip install -r requirements.txt
+# Example: Connecting directly to a USB device
+.\mqtt-proxy-windows-amd64.exe --interface serial --serial-port COM3
 
-# Run with environment variables
-$env:INTERFACE_TYPE="serial"
-$env:SERIAL_PORT="COM3"  # Check Device Manager for your actual COM port
-python mqtt-proxy.py
+# Example: Check the version
+.\mqtt-proxy-windows-amd64.exe --version
 ```
 
-**Option B: Docker via WSL2 + usbipd (Advanced)**
+> **Note:** You can also use a standard `.env` file in the same directory as the executable, and it will read those defaults automatically. Run `.\mqtt-proxy-windows-amd64.exe --help` to see all available configuration overrides!
+
+**Option 2: Run Natively with Python venv**
+Running via Python natively is great for development or if you already have Python installed.
+
+1. In the MeshMonitor Windows App, go to Settings and check **"Enable Virtual Node Server"**. This starts a local MeshNode server on port `4404` (Skip if using direct USB serial).
+2. Open PowerShell or Command Prompt.
+3. Create and activate a virtual environment:
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+4. Install dependencies:
+```powershell
+pip install -r requirements.txt
+```
+5. Run the proxy with command-line arguments:
+```powershell
+# Connecting to Virtual Node
+python mqtt-proxy.py --interface tcp --tcp-host 127.0.0.1 --tcp-port 4404
+
+# Connecting to USB
+python mqtt-proxy.py --interface serial --serial-port COM3
+
+# Check the version
+python mqtt-proxy.py --version
+```
+
+**Option 3: Run via Docker Desktop**
+
+*TCP Interface:* 
+Docker Desktop for Windows works perfectly for TCP connections. You can use the standard `docker-compose.yml` configuration out-of-the-box.
+
+*Serial Interface (USB):* 
+Docker on Windows **does not support USB passthrough directly** because Docker runs in WSL2. If you absolutely must use Docker for a USB serial connection on Windows, you can bridge it with `usbipd`:
 1. Install [usbipd-win](https://github.com/dorssel/usbipd-win)
 2. Attach device: `usbipd wsl attach --busid <BUSID>`
 3. Device appears as `/dev/ttyACM0` in WSL2/Docker
@@ -388,6 +427,38 @@ python mqtt-proxy.py
 ```bash
 docker compose build
 ```
+
+## Releasing New Versions
+
+Because this repository enforces **Pull Request requirements** for the `master` branch, follow this workflow to release a new version:
+
+1. **Create a Release Branch:**
+   ```bash
+   git checkout -b release/v1.6.0
+   ```
+
+2. **Run the Release Script:**
+   Use the provided automation script to bump the version in `version.py` and `README.md`:
+   ```bash
+   python scripts/release.py 1.6.0
+   ```
+   *This will create a local "chore: release v1.6.0" commit and a local `v1.6.0` tag.*
+
+3. **Push and Open a PR:**
+   Push the branch and open a Pull Request to `master`.
+   ```bash
+   git push origin release/v1.6.0
+   ```
+
+4. **Merge and Tag:**
+   Once the PR is merged into `master`, push the local tag to GitHub to trigger the release pipeline:
+   ```bash
+   git checkout master
+   git pull
+   git push origin v1.6.0
+   ```
+
+The GitHub Actions will automatically detect the new tag, build the Windows executable, and publish the Docker images.
 
 ## Contributing
 
