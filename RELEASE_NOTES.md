@@ -7,10 +7,11 @@
   - No Python installation or virtual environment is required.
   - Windows AMD64 binaries are now automatically generated via GitHub Actions and attached directly to Releases.
   - Updated configuration documentation to recommend this execution method for easiest integration with the MeshMonitor Desktop App.
+  - **Subprocess-Ready:** The executable is specially configured to force line-buffered `stdout` and `stderr` streams using `utf-8` encoding. This prevents buffering lags and `cp1252` encoding crashes when embedded and executed natively by external tools or desktop apps on Windows.
 
 ### Command-Line Interface (CLI) Arguments
 - **Argparse Support:** The proxy now fully supports standard command-line flags to configure connection settings directly on launch.
-  - Supported execution flags: `--interface`, `--tcp-host`, `--tcp-port`, `--serial-port`, and `--log-level`.
+  - Supported execution flags: `--interface`, `--tcp-host`, `--tcp-port`, `--serial-port`, `--log-level`, and `--version`.
   - Backwards-compatible: Existing environment variables and `.env` files still function normally as fallbacks for any omitted flags.
 ## 📦 Dependencies
 - **Bump Meshtastic to 2.7.8**: Upgraded python `meshtastic` dependency to the latest `2.7.8` version for compatibility with the newest firmware module configs (e.g. Traffic Management and StatusMessage).

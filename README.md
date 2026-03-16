@@ -147,6 +147,12 @@ SERIAL_PORT=/dev/ttyACM0
 docker compose logs -f mqtt-proxy
 ```
 
+### Subprocess Integration & Log Streaming
+
+If you are integrating `mqtt-proxy` as a child process inside another application (e.g., via Node.js `spawn` or `execFile`), you can pipe its output reliably. The proxy explicitly enforces **UTF-8 encoding** and **line-buffered streaming** for `sys.stdout` and `sys.stderr` when PIPED. 
+
+All proxy logs (including emojis) will stream instantly over standard IO without any buffering delays or Windows Console encoding crashes (`[WinError 10106]`).
+
 ### Stopping the Proxy
 
 ```bash
@@ -173,6 +179,9 @@ If you prefer not to manage Python environments or Docker on Windows, you can do
 
 # Example: Connecting directly to a USB device
 .\mqtt-proxy-windows-amd64.exe --interface serial --serial-port COM3
+
+# Example: Check the version
+.\mqtt-proxy-windows-amd64.exe --version
 ```
 
 > **Note:** You can also use a standard `.env` file in the same directory as the executable, and it will read those defaults automatically. Run `.\mqtt-proxy-windows-amd64.exe --help` to see all available configuration overrides!
@@ -198,6 +207,9 @@ python mqtt-proxy.py --interface tcp --tcp-host 127.0.0.1 --tcp-port 4404
 
 # Connecting to USB
 python mqtt-proxy.py --interface serial --serial-port COM3
+
+# Check the version
+python mqtt-proxy.py --version
 ```
 
 **Option 3: Run via Docker Desktop**
