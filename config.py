@@ -4,7 +4,7 @@
 
 import os
 import logging
-import sys
+import argparse
 
 logger = logging.getLogger("mqtt-proxy.config")
 
@@ -12,19 +12,35 @@ class Config:
     """Configuration manager for MQTT Proxy."""
     
     def __init__(self):
-        # logging setup
-        self.log_level_str = os.environ.get("LOG_LEVEL", "INFO").upper()
+        # Parse command line arguments
+        # We use parse_known_args to avoid crashing on unknown args (e.g., from pytest)
+        parser = argparse.ArgumentParser(description="Meshtastic MQTT Proxy", add_help=False)
+        parser.add_argument("--interface", type=str, help="Interface type: 'tcp' or 'serial'")
+        parser.add_argument("--tcp-host", type=str, help="TCP hostname or IP address")
+        parser.add_argument("--tcp-port", type=int, help="TCP port number")
+        parser.add_argument("--serial-port", type=str, help="Serial device path (e.g. COM3 or /dev/ttyUSB0)")
+        parser.add_argument("--log-level", type=str, help="Logging level (e.g. INFO, DEBUG)")
+        args, _ = parser.parse_known_args()
+
+        # Helper method for preferring CLI arg over env var
+        def get_setting(cli_arg, env_var, default_val):
+            if cli_arg is not None:
+                return cli_arg
+            return os.environ.get(env_var, default_val)
+
+        # Logging setup
+        self.log_level_str = get_setting(args.log_level, "LOG_LEVEL", "INFO").upper()
         self.log_level = getattr(logging, self.log_level_str, logging.INFO)
 
         # Interface configuration
-        self.interface_type = os.environ.get("INTERFACE_TYPE", "tcp").lower()
+        self.interface_type = get_setting(args.interface, "INTERFACE_TYPE", "tcp").lower()
 
         # TCP configuration
-        self.tcp_node_host = os.environ.get("TCP_NODE_HOST", "localhost")
-        self.tcp_node_port = int(os.environ.get("TCP_NODE_PORT", "4403"))
+        self.tcp_node_host = get_setting(args.tcp_host, "TCP_NODE_HOST", "localhost")
+        self.tcp_node_port = int(get_setting(args.tcp_port, "TCP_NODE_PORT", "4403"))
 
         # Serial configuration
-        self.serial_port = os.environ.get("SERIAL_PORT", "/dev/ttyUSB0")
+        self.serial_port = get_setting(args.serial_port, "SERIAL_PORT", "/dev/ttyUSB0")
 
         # BLE configuration
         self.ble_address = os.environ.get("BLE_ADDRESS", "")

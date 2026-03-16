@@ -6,6 +6,7 @@ import logging
 import signal
 import sys
 import os
+import argparse
 from pubsub import pub
 
 from config import cfg
@@ -269,5 +270,16 @@ class MQTTProxy:
         self._cleanup()
 
 if __name__ == "__main__":
+    # If the user explicitly asks for help on the main script, show full usage
+    # We do a quick check here before the main proxy loops start.
+    parser = argparse.ArgumentParser(description="Meshtastic MQTT Proxy")
+    parser.add_argument("--interface", type=str, help="Interface type: 'tcp' or 'serial' (default: tcp)")
+    parser.add_argument("--tcp-host", type=str, help="TCP hostname or IP address (default: localhost)")
+    parser.add_argument("--tcp-port", type=int, help="TCP port number (default: 4403)")
+    parser.add_argument("--serial-port", type=str, help="Serial device path (e.g. COM3 or /dev/ttyUSB0)")
+    parser.add_argument("--log-level", type=str, help="Logging level (e.g. INFO, DEBUG)")
+    # We don't need to save the args here, config.py already parsed them using parse_known_args
+    parser.parse_known_args()
+
     app = MQTTProxy()
     app.start()

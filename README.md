@@ -193,6 +193,23 @@ $env:TCP_NODE_PORT="4404"
 python mqtt-proxy.py
 ```
 
+**Option B: Self-Contained Executable (Click-and-Run)**
+If you prefer not to manage Python environments on Windows, you can download a pre-built standalone `.exe` directly from the [GitHub Releases](https://github.com/LN4CY/mqtt-proxy/releases) page.
+
+1. Download the `mqtt-proxy-windows-amd64.exe` from the latest release.
+2. Open PowerShell or Command Prompt.
+3. Run the executable, passing your connection details as command-line arguments:
+
+```powershell
+# Example: Connecting to a MeshMonitor Virtual Node
+.\mqtt-proxy-windows-amd64.exe --interface tcp --tcp-host 127.0.0.1 --tcp-port 4404
+
+# Example: Connecting directly to a USB device
+.\mqtt-proxy-windows-amd64.exe --interface serial --serial-port COM3
+```
+
+> **Note:** You can also use a standard `.env` file in the same directory as the executable, and it will read those defaults automatically. Run `.\mqtt-proxy-windows-amd64.exe --help` to see all available configuration overrides!
+
 **Option B: Docker via WSL2 + usbipd (Advanced)**
 1. Install [usbipd-win](https://github.com/dorssel/usbipd-win)
 2. Attach device: `usbipd wsl attach --busid <BUSID>`
