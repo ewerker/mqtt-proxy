@@ -10,6 +10,7 @@ import argparse
 from pubsub import pub
 
 from config import cfg
+from version import __version__
 from handlers.mqtt import MQTTHandler
 from handlers.meshtastic import create_interface
 from handlers.node_tracker import PacketDeduplicator
@@ -46,7 +47,7 @@ class MQTTProxy:
         self.last_status_log_time = 0
 
     def start(self):
-        logger.info("🚀 MQTT Proxy starting (interface: %s)...", cfg.interface_type.upper())
+        logger.info("🚀 MQTT Proxy v%s starting (interface: %s)...", __version__, cfg.interface_type.upper())
         
         # Start the message queue
         self.message_queue.start()
@@ -272,7 +273,8 @@ class MQTTProxy:
 if __name__ == "__main__":
     # If the user explicitly asks for help on the main script, show full usage
     # We do a quick check here before the main proxy loops start.
-    parser = argparse.ArgumentParser(description="Meshtastic MQTT Proxy")
+    parser = argparse.ArgumentParser(description=f"Meshtastic MQTT Proxy v{__version__}")
+    parser.add_argument('--version', action='version', version=f'%(prog)s v{__version__}')
     parser.add_argument("--interface", type=str, help="Interface type: 'tcp' or 'serial' (default: tcp)")
     parser.add_argument("--tcp-host", type=str, help="TCP hostname or IP address (default: localhost)")
     parser.add_argument("--tcp-port", type=int, help="TCP port number (default: 4403)")
