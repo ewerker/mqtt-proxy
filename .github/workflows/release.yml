@@ -42,7 +42,7 @@ jobs:
 
       - name: Build Executable
         run: |
-          pyinstaller --name mqtt-proxy-windows-amd64 --onefile --console mqtt-proxy.py
+          pyinstaller --name mqtt-proxy-windows-amd64 --onefile --console --runtime-tmpdir "%LOCALAPPDATA%\Temp" mqtt-proxy.py
 
       - name: Upload Release Asset
         if: startsWith(github.ref, 'refs/tags/')
