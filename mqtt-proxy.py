@@ -200,8 +200,10 @@ class MQTTProxy:
         """
         try:
             parts = topic.split('/')
-            if len(parts) >= 4 and parts[1] == '2' and parts[2] == 'e':
-                return parts[3]
+            # Meshtastic topic format: <root>/<version>/<type>/<channel>/<node_id>
+            # type is usually 'e' (encrypted) or 'c' (cleartext)
+            if len(parts) >= 4 and parts[-3] in ('e', 'c'):
+                return parts[-2]
         except Exception:
             pass
         return None
@@ -232,10 +234,8 @@ class MQTTProxy:
                 enabled = getattr(ch.settings, "downlink_enabled", True)
                 return enabled
                 
-        # If channel not found, we assume it's okay? 
-        # Or should we be strict? 
-        # For now, let's be strict: if we can't find the channel, we don't know it's allowed.
-        # But wait, 'msh/2/e/LongFast' is the most common.
+        # Should we be strict? For now, we allow unknown channels to pass down to the "node"
+        # so that MeshMonitor (acting as a virtual node) can see Virtual Channels.
         logger.debug("⚠️ Channel '%s' not found in node config, allowing by default", channel_name)
         return True
 
@@ -257,8 +257,11 @@ class MQTTProxy:
                 enabled = getattr(ch.settings, "uplink_enabled", True)
                 return enabled
                 
-        logger.debug("⚠️ Channel '%s' not found in node config (uplink), allowing by default", channel_name)
-        return True
+        # CRITICAL LOOP PREVENTION: If the channel is unknown (like a Virtual Channel
+        # e.g., US-LongFast), we MUST NOT publish it back to MQTT!
+        # If we return True here, any echo from MeshMonitor creates an infinite publish loop.
+        logger.warning("🛡️ Channel '%s' not found in node config (uplink), dropping by default to prevent loops", channel_name)
+        return False
 
     def _perform_health_check(self, current_time):
         """Check system health."""

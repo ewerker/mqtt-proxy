@@ -149,6 +149,15 @@ class MQTTHandler:
                 topic_enc = f"{root_topic}/2/e/#"
                 logger.info("📥 Subscribing to Encrypted Wildcard: %s", topic_enc)
                 client.subscribe(topic_enc)
+                
+                # Subscribe to extra MQTT root topics
+                subscribed_roots = {root_topic}
+                for extra_root, _ in getattr(self.config, 'extra_mqtt_roots', []):
+                    if extra_root not in subscribed_roots:
+                        extra_topic = f"{extra_root}/2/e/#"
+                        logger.info("📥 Subscribing to Extra Root: %s", extra_topic)
+                        client.subscribe(extra_topic)
+                        subscribed_roots.add(extra_root)
         else:
             self.connected = False
             logger.error("❌ MQTT Connect failed: %s", rc)
@@ -233,13 +242,35 @@ class MQTTHandler:
                 logger.debug(f"⏭️ Skipping retained MQTT message: {message.topic}")
                 return
               
+            modified_topic = message.topic
+            
+            # Virtual Channel mapping for Extra Roots
+            extra_roots = getattr(self.config, 'extra_mqtt_roots', [])
+            for er_root, er_prefix in extra_roots:
+                if modified_topic.startswith(f"{er_root}/"):
+                    # Avoid rewriting if the configured extra root exactly matches the primary root
+                    if self.mqtt_root and er_root == self.mqtt_root:
+                        continue
+                        
+                    parts = modified_topic.split("/")
+                    if len(parts) >= 4 and parts[-3] in ("e", "c"):
+                        channel_name = parts[-2]
+                        # Prevent double-prefixing if we receive our own re-published message
+                        if not channel_name.startswith(f"{er_prefix}-"):
+                            new_channel_name = f"{er_prefix}-{channel_name}"
+                            parts[-2] = new_channel_name
+                            modified_topic = "/".join(parts)
+                            logger.debug("🔄 Virtual Channel Rewrite: %s -> %s for extra root %s", 
+                                         channel_name, new_channel_name, er_root)
+                    break
+
             self.last_activity = time.time()
             self.rx_count += 1
             
-            logger.info("📥 MQTT->Node: Topic=%s Size=%d bytes Retained=%s", message.topic, len(message.payload), message.retain)
+            logger.info("📥 MQTT->Node: Topic=%s Size=%d bytes Retained=%s", modified_topic, len(message.payload), message.retain)
             
             if self.on_message_callback:
-                self.on_message_callback(message.topic, message.payload, message.retain)
+                self.on_message_callback(modified_topic, message.payload, message.retain)
                 
         except Exception as e:
             logger.error("❌ Error handling MQTT message: %s", e)
