@@ -55,9 +55,6 @@ class MQTTProxy:
 
     def start(self):
         logger.info("🚀 MQTT Proxy v%s starting (interface: %s)...", __version__, cfg.interface_type.upper())
-        
-        # Start the message queue
-        self.message_queue.start()
 
         # Subscribe to events
         pub.subscribe(self.on_connection, "meshtastic.connection.established")
@@ -81,6 +78,9 @@ class MQTTProxy:
                 self._init_mqtt()
                 
                 logger.info("✅ Node config fully loaded. Proxy active.")
+                
+                # Start (or restart) the message queue
+                self.message_queue.start()
                 
                 # Main Loop
                 last_heartbeat = 0
@@ -242,8 +242,12 @@ class MQTTProxy:
         # (e.g. MeshMonitor), which can natively decrypt it using its own Channel Database 
         # based on the original channelname embedded in the packet.
         # This keeps the key off the node, preventing RF crosstalk while allowing monitoring.
-        logger.debug("📡 Channel '%s' not defined on radio, forwarding for MeshMonitor (virtual channel passthrough)", channel_name)
-        return True
+        if getattr(cfg, "mesh_allow_unconfigured_channels", True):
+            logger.debug("📡 Channel '%s' not defined on radio, forwarding for MeshMonitor (virtual channel passthrough)", channel_name)
+            return True
+        else:
+            logger.info("🛡️ Channel '%s' not defined on radio, dropping (mesh_allow_unconfigured_channels=false)", channel_name)
+            return False
 
     def _is_channel_uplink_enabled(self, channel_name):
         """Check if a specific channel has uplink enabled."""

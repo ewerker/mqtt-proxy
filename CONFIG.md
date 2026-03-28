@@ -93,6 +93,7 @@ BLE support requires custom implementation using the `bleak` library. See the [m
 | `CONFIG_WAIT_TIMEOUT` | integer | `60` | Max time to wait for node config (seconds) |
 | `POLL_INTERVAL` | integer | `1` | Config polling interval (seconds) |
 | `EXTRA_MQTT_ROOTS` | string | `""` | Comma-separated list of roots with optional prefixes for Virtual Channels (e.g. `msh/US/OH:OH, msh/US/CA:CA`) |
+| `MESH_ALLOW_UNCONFIGURED_CHANNELS` | boolean | `true` | Forward MQTT messages to the radio even if their channel is not explicitly configured on the physical node (Virtual Channel Passthrough). Set to `false` for strict filtering. |
 
 
 ### Health Check Settings
@@ -108,7 +109,7 @@ BLE support requires custom implementation using the `bleak` library. See the [m
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `MESH_TRANSMIT_DELAY` | float | `0.5` | **Rate Limiting**: Delay between outgoing packets (seconds). Prevents radio congestion. |
-| `MESH_MAX_QUEUE_SIZE` | integer | `5000` | Maximum number of outgoing messages buffered in RAM. A large queue handles sudden bursts (like returning from offline state) without dropping messages. Memory impact is negligible (~2.5MB per 10,000 messages). |
+| `MESH_MAX_QUEUE_SIZE` | integer | `5000` | Maximum number of outgoing messages buffered in RAM. A large queue handles sudden bursts without dropping messages. When full, the proxy uses a **drop-oldest** eviction strategy to ensure the newest messages reach the radio. Memory impact is negligible (~2.5MB per 10,000 messages). |
  
 > [!IMPORTANT]
 > **New "Probe & Kill" Logic:**
