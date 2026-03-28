@@ -2,14 +2,14 @@
 
 A production-ready MQTT proxy for Meshtastic devices that enables bidirectional message forwarding between Meshtastic nodes and MQTT brokers. Supports TCP and Serial interface connections with a clean factory pattern architecture.
 
-**Version**: 1.6.4
+**Version**: 1.6.5
 
 ## Features
 
 - ✅ **Modular Architecture** - Clean separation of concerns with `config.py`, `handlers/mqtt.py`, `handlers/meshtastic.py`, and `handlers/queue.py`
 - ✅ **Multi-Interface Support** - TCP and Serial connections to Meshtastic nodes
 - ✅ **Bidirectional Forwarding** - Messages flow both ways between node and MQTT broker
-- ✅ **Message Queue** - Rate-limited transmission with configurable delay to prevent radio congestion
+- ✅ **Message Queue** - Rate-limited transmission with drop-oldest eviction and configurable delay to prevent radio congestion
 - ✅ **Robust Packet Handling** - SafeInterfaceMixin prevents crashes from malformed packets
 - ✅ **Implicit ACK Restoration** - Intelligently bypasses loop protection for echoed packets, restoring the firmware's missing delivery confirmations (fixing the "Red X" issue)
 - ✅ **mqttClientProxyMessage Protocol** - Implements Meshtastic's official proxy protocol
@@ -107,6 +107,7 @@ SERIAL_PORT=/dev/ttyACM0
 | `CONFIG_WAIT_TIMEOUT` | `60` | Node config wait timeout (seconds) |
 | `POLL_INTERVAL` | `1` | Config polling interval (seconds) |
 | `MESH_TRANSMIT_DELAY` | `0.5` | Delay between packets for rate limiting (seconds) |
+| `MESH_ALLOW_UNCONFIGURED_CHANNELS` | `true` | Allow forwarding messages for unconfigured channels |
 
 See [CONFIG.md](CONFIG.md) for detailed configuration options.
 

@@ -5,7 +5,7 @@
 import time
 import logging
 import threading
-import queue
+from collections import deque
 from meshtastic import mesh_pb2
 
 logger = logging.getLogger("mqtt-proxy.queue")
@@ -35,7 +35,10 @@ class MessageQueue:
             except (TypeError, ValueError):
                 self.max_size = 100
                 
-        self.queue = queue.Queue(maxsize=self.max_size)
+        self._deque = deque()
+        self._lock = threading.Lock()
+        self._event = threading.Event()
+        self._eviction_count = 0
         self.running = False
         self.thread = None
 
@@ -51,65 +54,90 @@ class MessageQueue:
     def stop(self):
         """Stop the queue processing."""
         self.running = False
+        self._event.set()
         if self.thread and self.thread.is_alive():
             self.thread.join(timeout=1.0)
         logger.info("🛑 Message queue stopped.")
 
+    def qsize(self):
+        """Return current queue size."""
+        with self._lock:
+            return len(self._deque)
+
+    def drain_all(self):
+        """Remove and return all items as a list. Used for testing."""
+        with self._lock:
+            items = list(self._deque)
+            self._deque.clear()
+            return items
+
+    def _get(self):
+        """Get the next item from the deque, or None if empty."""
+        with self._lock:
+            if self._deque:
+                return self._deque.popleft()
+            return None
+
     def put(self, topic, payload, retained):
-        """Enqueue a message to be sent to the radio."""
-        try:
-            self.queue.put({
-                'topic': topic,
-                'payload': payload,
-                'retained': retained,
-                'timestamp': time.time()
-            }, block=False)
-            
-            qsize = self.queue.qsize()
-            if qsize >= (self.max_size * 0.8):
-                 logger.warning(f"⚠️ Queue nearly full: {qsize}/{self.max_size} messages pending")
-            elif qsize > 10:
-                 logger.debug(f"📈 Queue growing: {qsize} messages pending")
-        except queue.Full:
-            logger.error(f"❌ Queue FULL ({self.max_size} msgs). Dropping new message for topic: {topic}")
+        """Enqueue a message. If full, evict the oldest message."""
+        item = {
+            'topic': topic,
+            'payload': payload,
+            'retained': retained,
+            'timestamp': time.time()
+        }
+
+        evicted_topic = None
+        with self._lock:
+            if len(self._deque) >= self.max_size:
+                evicted = self._deque.popleft()
+                evicted_topic = evicted['topic']
+                self._eviction_count += 1
+
+            self._deque.append(item)
+            size = len(self._deque)
+
+        if evicted_topic is not None:
+            logger.warning(f"⚠️ Queue full ({self.max_size}/{self.max_size}), evicted {self._eviction_count} total. Evicting oldest message to make room.")
+            logger.debug(f"Evicted message for topic: {evicted_topic}")
+
+        self._event.set()
+
+        if size >= (self.max_size * 0.8) and size < self.max_size:
+            logger.warning(f"⚠️ Queue nearly full: {size}/{self.max_size} messages pending")
+        elif size > 10:
+            logger.debug(f"📈 Queue growing: {size} messages pending")
 
     def _process_loop(self):
         """Main processing loop."""
         while self.running:
             try:
-                # 1. Get an item from the queue (blocking with timeout to allow shutdown check)
-                item = self.queue.get(timeout=1.0)
+                self._event.clear()
+                item = self._get()
                 
-                # 2. Wait for interface to be ready
-                iface = self._wait_for_interface()
-                if not iface or not self.running:
-                    # If we shut down while waiting, put it back or drop?
-                    # Since we are daemon, dropping is fine on shutdown.
-                    self.queue.task_done()
+                if item is None:
+                    self._event.wait(timeout=1.0)
                     continue
 
-                # 3. Send the item
+                iface = self._wait_for_interface()
+                if not iface or not self.running:
+                    logger.debug(f"Dropping message during shutdown: {item['topic']}")
+                    continue
+
                 try:
                     queue_duration = time.time() - item['timestamp']
                     send_start = time.time()
                     self._send_to_radio(iface, item)
                     send_duration = time.time() - send_start
                     
-                    queue_size = self.queue.qsize()
+                    queue_size = self.qsize()
                     logger.info(f"✅ Message processed. Queue: {queue_size}/{self.max_size}, Wait: {queue_duration:.3f}s, Send: {send_duration:.3f}s")
                     
-                    # 4. Rate Limiting
                     time.sleep(self.config.mesh_transmit_delay)
                     
                 except Exception as e:
                     logger.error(f"❌ Failed to send to radio: {e}")
-                    # Potentially re-queue? For now, we assume simple failure means drop to avoid head-of-line blocking
-                    # on malformed packets. If connection lost, _wait_for_interface matches next time.
                 
-                self.queue.task_done()
-                
-            except queue.Empty:
-                pass
             except Exception as e:
                 logger.error(f"❌ Error in queue processing loop: {e}")
                 time.sleep(1)

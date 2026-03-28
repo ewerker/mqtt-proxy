@@ -1,3 +1,11 @@
+# Release v1.6.5
+
+## ✨ Features & Enhancements
+- **Strict Channel Verification:** Added configuration flag `MESH_ALLOW_UNCONFIGURED_CHANNELS` (default: `True`) allowing users to strictly enforce network forwarding restrictions based on physical node definitions, preventing extraneous traffic from traversing the proxy (fixes Issue 45).
+- **Drop-Oldest Queue Eviction:** Replaced the node interface transmission buffer with a `collections.deque` implementing a drop-oldest eviction strategy. This ensures that the most recent packets consistently reach the radio during peak load and connection reconnects without latency blocks (combines PR 46 & 47).
+
+---
+
 # Release v1.6.4
 
 ## 🚀 Infrastructure & CI/CD
