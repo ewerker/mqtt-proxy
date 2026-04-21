@@ -72,12 +72,14 @@ def test_ack_tracking_publishes_sent_and_ack():
 
     assert 4321 in proxy.pending_acks
     sent_statuses = [item for item in proxy.mqtt_handler.published if item[1]["status"] == "sent"]
-    assert len(sent_statuses) == 2
+    assert len(sent_statuses) == 1
+    assert sent_statuses[0][0] == "msh/EU_868/proxy/ack/ack-test-1"
 
     proxy.on_meshtastic_ack(4321)
 
     ack_statuses = [item for item in proxy.mqtt_handler.published if item[1]["status"] == "ack"]
-    assert len(ack_statuses) == 2
+    assert len(ack_statuses) == 1
+    assert ack_statuses[0][0] == "msh/EU_868/proxy/ack/ack-test-1"
     assert 4321 not in proxy.pending_acks
 
 
@@ -106,5 +108,6 @@ def test_ack_tracking_times_out_after_one_minute():
     proxy._expire_pending_acks(proxy.pending_acks[5555]["created_at"] + 61)
 
     timeout_statuses = [item for item in proxy.mqtt_handler.published if item[1]["status"] == "timeout"]
-    assert len(timeout_statuses) == 2
+    assert len(timeout_statuses) == 1
+    assert timeout_statuses[0][0] == "msh/EU_868/proxy/ack/ack-timeout-1"
     assert 5555 not in proxy.pending_acks

@@ -165,7 +165,6 @@ For ACK correlation, include a `client_ref` in the JSON payload:
 ACK lifecycle topics:
 
 ```text
-<root>/proxy/ack/all
 <root>/proxy/ack/<client_ref>
 ```
 

@@ -197,7 +197,6 @@ If you want ACK correlation over MQTT, include a `client_ref` in the JSON payloa
 
 ACK lifecycle events are published to:
 
-- `msh/<region>/proxy/ack/all`
 - `msh/<region>/proxy/ack/<client_ref>`
 
 The proxy keeps ACK correlations in memory for 60 seconds and then emits a `timeout` status if no ACK arrives in that window.

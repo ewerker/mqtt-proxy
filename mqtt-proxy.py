@@ -390,7 +390,6 @@ class MQTTProxy:
             payload["response_packet"] = packet
 
         base_topic = f"{self.mqtt_handler.mqtt_root}/proxy/ack"
-        self.mqtt_handler.publish_json(f"{base_topic}/all", payload)
         if entry.get("client_ref"):
             self.mqtt_handler.publish_json(f"{base_topic}/{entry['client_ref']}", payload)
 
