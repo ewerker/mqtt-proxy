@@ -5,9 +5,13 @@
 from __future__ import annotations
 
 import time
+import logging
 from typing import Any, Dict, Optional
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.message import Message
+
+
+logger = logging.getLogger("mqtt-proxy.handlers.listener")
 
 
 def extract_text(packet: Dict[str, Any]) -> Optional[str]:
@@ -94,6 +98,16 @@ class ReceiveMirrorListener:
         record = self._build_record(packet)
         base_topic = f"{mqtt_handler.mqtt_root}/proxy/rx/{mqtt_handler.prefixed_node_id}"
         record["gateway_id"] = mqtt_handler.prefixed_node_id
+
+        if getattr(self.config, "verbose", False):
+            logger.info(
+                "RX %s %s -> %s port=%s text=%s",
+                record["scope"].upper(),
+                record["from_id"],
+                record["to_id"] or "^all",
+                record["portnum"],
+                (record["text"] or "")[:120],
+            )
 
         mqtt_handler.publish_json(f"{base_topic}/all", record)
         mqtt_handler.publish_json(f"{base_topic}/port/{record['portnum']}", record)

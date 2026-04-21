@@ -80,6 +80,9 @@ class MessageQueue:
 
     def put(self, topic, payload, retained):
         """Enqueue a message. If full, evict the oldest message."""
+        if getattr(self.config, "verbose", False):
+            logger.info("Queue enqueue topic=%s retained=%s size=%d", topic, retained, len(payload))
+
         item = {
             'topic': topic,
             'payload': payload,
@@ -165,7 +168,9 @@ class MessageQueue:
         
         # Determine size for logging
         size = len(item['payload'])
-        
+        if getattr(self.config, 'verbose', False):
+            logger.info("Queue send topic=%s size=%d retained=%s", item['topic'], size, item['retained'])
+
         # Use _sendToRadio if available (thread-safe with locking), fall back to Impl
         if hasattr(iface, "_sendToRadio"):
              iface._sendToRadio(to_radio)

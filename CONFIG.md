@@ -30,12 +30,29 @@ Use this for direct USB access to a Meshtastic device.
 |----------|------|---------|-------------|
 | `INTERFACE_TYPE` | string | `tcp` | `tcp` or `serial` |
 | `LOG_LEVEL` | string | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `VERBOSE` | boolean | `false` | Verbose console output for RX/TX/MQTT details |
 | `TCP_NODE_HOST` | string | `localhost` | TCP node host |
 | `TCP_NODE_PORT` | integer | `4403` | TCP node port |
 | `TCP_TIMEOUT` | integer | `300` | TCP timeout in seconds |
 | `SERIAL_PORT` | string | `/dev/ttyUSB0` | Serial device path |
 | `CONFIG_WAIT_TIMEOUT` | integer | `60` | Wait time for node config |
 | `POLL_INTERVAL` | integer | `1` | Poll interval while waiting for config |
+
+## Verbose Console Mode
+
+You can enable a more detailed console in two ways:
+
+```cmd
+start-mqtt-proxy.cmd --verbose
+```
+
+or
+
+```env
+VERBOSE=true
+```
+
+The command line also accepts the alias `--verbode`.
 
 ## Listener Mirror
 

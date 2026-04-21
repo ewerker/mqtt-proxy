@@ -67,6 +67,12 @@ MQTT_LISTENER_ENABLED=true
 start-mqtt-proxy.cmd
 ```
 
+For a more chatty console with detailed receive/send logs, start it with:
+
+```cmd
+start-mqtt-proxy.cmd --verbose
+```
+
 ## Windows Start
 
 The preferred Windows entry point is [start-mqtt-proxy.cmd](C:\Users\richt\Documents\Codex\mqtt%20Proxy\mqtt-proxy\start-mqtt-proxy.cmd). It loads `.env` and starts the proxy from `.venv` without requiring PowerShell script execution.
@@ -75,6 +81,12 @@ Direct Python start is also possible:
 
 ```powershell
 .\.venv\Scripts\python.exe mqtt-proxy.py --interface serial --serial-port COM7
+```
+
+Verbose mode also works here:
+
+```powershell
+.\.venv\Scripts\python.exe mqtt-proxy.py --interface serial --serial-port COM7 --verbose
 ```
 
 ## Configuration

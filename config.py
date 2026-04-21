@@ -20,6 +20,7 @@ class Config:
         parser.add_argument("--tcp-port", type=int, help="TCP port number")
         parser.add_argument("--serial-port", type=str, help="Serial device path (e.g. COM3 or /dev/ttyUSB0)")
         parser.add_argument("--log-level", type=str, help="Logging level (e.g. INFO, DEBUG)")
+        parser.add_argument("--verbose", "--verbode", action="store_true", dest="verbose", help="Enable verbose console output")
         args, _ = parser.parse_known_args()
 
         # Helper method for preferring CLI arg over env var
@@ -29,7 +30,12 @@ class Config:
             return os.environ.get(env_var, default_val)
 
         # Logging setup
+        verbose_env = os.environ.get("VERBOSE", "false").lower() == "true"
+        self.verbose = bool(args.verbose or verbose_env)
+
         self.log_level_str = get_setting(args.log_level, "LOG_LEVEL", "INFO").upper()
+        if self.verbose and args.log_level is None and "LOG_LEVEL" not in os.environ:
+            self.log_level_str = "DEBUG"
         self.log_level = getattr(logging, self.log_level_str, logging.INFO)
 
         # Interface configuration

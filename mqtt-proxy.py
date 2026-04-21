@@ -61,6 +61,8 @@ class MQTTProxy:
         pub.subscribe(self.on_radio_packet_received, "meshtastic.receive")
 
     def start(self):
+        if getattr(cfg, "verbose", False):
+            logger.info("Verbose console output enabled.")
         logger.info("🚀 MQTT Proxy v%s starting (interface: %s)...", __version__, cfg.interface_type.upper())
 
         # Subscribe to events
@@ -511,6 +513,7 @@ if __name__ == "__main__":
     parser.add_argument("--tcp-port", type=int, help="TCP port number (default: 4403)")
     parser.add_argument("--serial-port", type=str, help="Serial device path (e.g. COM3 or /dev/ttyUSB0)")
     parser.add_argument("--log-level", type=str, help="Logging level (e.g. INFO, DEBUG)")
+    parser.add_argument("--verbose", "--verbode", action="store_true", dest="verbose", help="Enable verbose console output")
     # We don't need to save the args here, config.py already parsed them using parse_known_args
     parser.parse_known_args()
 

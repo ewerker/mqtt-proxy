@@ -122,6 +122,8 @@ class MQTTHandler:
     def publish(self, topic, payload, retain=False):
         """Publish a message to MQTT."""
         if self.client:
+            if getattr(self.config, "verbose", False):
+                logger.info("MQTT publish topic=%s retain=%s size=%d", topic, retain, len(payload))
             result = self.client.publish(topic, payload, retain=retain)
             if result.rc == mqtt.MQTT_ERR_SUCCESS:
                 self.tx_count += 1
