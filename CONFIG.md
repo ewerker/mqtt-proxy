@@ -94,6 +94,14 @@ BLE support requires custom implementation using the `bleak` library. See the [m
 | `POLL_INTERVAL` | integer | `1` | Config polling interval (seconds) |
 | `EXTRA_MQTT_ROOTS` | string | `""` | Comma-separated list of roots with optional prefixes for Virtual Channels (e.g. `msh/US/OH:OH, msh/US/CA:CA`) |
 | `MESH_ALLOW_UNCONFIGURED_CHANNELS` | boolean | `true` | Forward MQTT messages to the radio even if their channel is not explicitly configured on the physical node (Virtual Channel Passthrough). Set to `false` for strict filtering. |
+| `MQTT_LISTENER_ENABLED` | boolean | `false` | Mirror packets received by the local node to dedicated JSON MQTT topics |
+| `MQTT_LISTENER_PORTS` | string | `""` | Optional comma-separated allowlist of `decoded.portnum` values such as `TEXT_MESSAGE_APP,POSITION_APP` |
+| `MQTT_LISTENER_DM_ONLY` | boolean | `false` | Only mirror direct messages sent to the local node |
+| `MQTT_LISTENER_GROUP_ONLY` | boolean | `false` | Only mirror broadcast/group traffic |
+| `MQTT_LISTENER_TEXT_ONLY` | boolean | `false` | Only mirror text-like messages |
+
+> [!NOTE]
+> Backward compatibility is preserved for the older `MQTT_MIRROR_RX_ENABLED` and `MQTT_MIRROR_RX_PORTS` names. The new `MQTT_LISTENER_*` names take precedence when both are present.
 
 
 ### Health Check Settings
@@ -261,6 +269,19 @@ LOG_LEVEL=INFO
 INTERFACE_TYPE=serial
 SERIAL_PORT=/dev/ttyACM0
 LOG_LEVEL=INFO
+```
+
+### USB Listener Mirror
+
+```env
+INTERFACE_TYPE=serial
+SERIAL_PORT=COM7
+LOG_LEVEL=INFO
+MQTT_LISTENER_ENABLED=true
+MQTT_LISTENER_PORTS=TEXT_MESSAGE_APP,POSITION_APP,TELEMETRY_APP
+MQTT_LISTENER_DM_ONLY=false
+MQTT_LISTENER_GROUP_ONLY=false
+MQTT_LISTENER_TEXT_ONLY=false
 ```
 
 ### Development/Debug

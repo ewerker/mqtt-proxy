@@ -118,8 +118,34 @@ SERIAL_PORT=/dev/ttyACM0
 | `POLL_INTERVAL` | `1` | Config polling interval (seconds) |
 | `MESH_TRANSMIT_DELAY` | `0.5` | Delay between packets for rate limiting (seconds) |
 | `MESH_ALLOW_UNCONFIGURED_CHANNELS` | `true` | Allow forwarding messages for unconfigured channels |
+| `MQTT_LISTENER_ENABLED` | `false` | Mirror received mesh packets to JSON MQTT topics via `meshtastic.receive` |
+| `MQTT_LISTENER_PORTS` | `""` | Optional comma-separated `decoded.portnum` filter list |
+| `MQTT_LISTENER_DM_ONLY` | `false` | Only publish direct messages addressed to the local node |
+| `MQTT_LISTENER_GROUP_ONLY` | `false` | Only publish broadcast/group traffic |
+| `MQTT_LISTENER_TEXT_ONLY` | `false` | Only publish text-like messages |
 
 See [CONFIG.md](CONFIG.md) for detailed configuration options.
+
+### Listener Mode
+
+The fork adds a receive listener mode that mirrors packets seen by the local node to dedicated JSON MQTT topics. This mode reads MQTT broker credentials from the node configuration, listens on Meshtastic's stable `meshtastic.receive` event, and publishes structured records for downstream tools.
+
+Example:
+
+```env
+MQTT_LISTENER_ENABLED=true
+MQTT_LISTENER_PORTS=TEXT_MESSAGE_APP,POSITION_APP,TELEMETRY_APP
+MQTT_LISTENER_DM_ONLY=false
+MQTT_LISTENER_GROUP_ONLY=false
+MQTT_LISTENER_TEXT_ONLY=false
+```
+
+Published topics:
+
+- `msh/<region>/proxy/rx/!<gateway>/all`
+- `msh/<region>/proxy/rx/!<gateway>/port/<PORTNUM>`
+- `msh/<region>/proxy/rx/!<gateway>/scope/dm`
+- `msh/<region>/proxy/rx/!<gateway>/scope/group`
 
 ## Health Monitoring & Recovery
 
@@ -397,8 +423,9 @@ The proxy uses a modular architecture with clean separation of concerns:
 
 1. **Node → MQTT**: Proxy receives `mqttClientProxyMessage` from node and publishes to MQTT broker
 2. **MQTT → Node**: Proxy subscribes to MQTT topics and forwards messages to node as `mqttClientProxyMessage`
-3. **Implicit ACK Handling**: The proxy detects when the MQTT broker echoes a message sent by the local node and forwards it back. This fulfills the firmware's requirement for a delivery confirmation, ensuring the node generates a local "Implicit ACK" rather than waiting 45 seconds and timing out (which causes Red X delivery failures in MeshMonitor).
-4. **Transparent Operation**: Node firmware handles encryption, channel mapping, and routing
+3. **Listener Mirror**: Optional listener mode subscribes to `meshtastic.receive`, builds a JSON record for every packet seen by the local node, and publishes it to dedicated MQTT topics for automation, dashboards, and filtering by type or scope.
+4. **Implicit ACK Handling**: The proxy detects when the MQTT broker echoes a message sent by the local node and forwards it back. This fulfills the firmware's requirement for a delivery confirmation, ensuring the node generates a local "Implicit ACK" rather than waiting 45 seconds and timing out (which causes Red X delivery failures in MeshMonitor).
+5. **Transparent Operation**: Node firmware handles encryption, channel mapping, and routing
 
 ## Requirements
 

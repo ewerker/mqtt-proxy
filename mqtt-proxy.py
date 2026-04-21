@@ -11,6 +11,7 @@ from pubsub import pub
 
 from config import cfg
 from version import __version__
+from handlers.listener import ReceiveMirrorListener
 from handlers.mqtt import MQTTHandler
 from handlers.meshtastic import create_interface
 from handlers.node_tracker import PacketDeduplicator
@@ -46,6 +47,7 @@ class MQTTProxy:
         # Initialize Message Queue
         # We pass a lambda to always get the current interface instance
         self.message_queue = MessageQueue(cfg, lambda: self.iface)
+        self.listener = ReceiveMirrorListener(cfg, lambda: self.iface, lambda: self.mqtt_handler)
         
         # State
         self.last_radio_activity = 0
@@ -197,17 +199,11 @@ class MQTTProxy:
         self.message_queue.put(topic, payload, retained)
 
     def on_radio_packet_received(self, packet, interface=None, **kwargs):
-        """Mirror packets seen by the local node to MQTT JSON topics when enabled."""
-        if not getattr(cfg, "mqtt_mirror_rx_enabled", False):
-            return
-
-        if not self.mqtt_handler:
-            return
-
+        """Publish received packets through the listener pipeline when enabled."""
         try:
-            self.mqtt_handler.mirror_radio_packet_dict(packet)
+            self.listener.handle_receive(packet)
         except Exception as e:
-            logger.warning("⚠️ Failed to mirror radio packet to MQTT: %s", e)
+            logger.warning("⚠️ Failed to handle receive packet for MQTT listener: %s", e)
 
     def _extract_channel_from_topic(self, topic):
         """
