@@ -8,6 +8,7 @@ import sys
 import os
 import argparse
 import json
+import threading
 from pubsub import pub
 
 from config import cfg
@@ -51,6 +52,9 @@ class MQTTProxy:
         self.message_queue = MessageQueue(cfg, lambda: self.iface)
         self.listener = ReceiveMirrorListener(cfg, lambda: self.iface, lambda: self.mqtt_handler)
         self.node_list_publisher = NodeListPublisher(cfg, lambda: self.iface, lambda: self.mqtt_handler)
+        self.pending_acks = {}
+        self.pending_ack_lock = threading.Lock()
+        self.pending_ack_ttl_seconds = 60
         
         # State
         self.last_radio_activity = 0
@@ -59,6 +63,7 @@ class MQTTProxy:
         self.last_status_log_time = 0
 
         pub.subscribe(self.on_radio_packet_received, "meshtastic.receive")
+        pub.subscribe(self.on_meshtastic_ack, "meshtastic.ack")
 
     def start(self):
         if getattr(cfg, "verbose", False):
@@ -99,6 +104,7 @@ class MQTTProxy:
                     
                     self._log_status(current_time)
                     self.node_list_publisher.publish_if_due(current_time=current_time)
+                    self._expire_pending_acks(current_time)
                     health_ok, reasons = self._perform_health_check(current_time)
                     self._update_heartbeat(current_time, health_ok, reasons)
                     
@@ -225,26 +231,31 @@ class MQTTProxy:
             channel_index = command["channel_index"]
             want_ack = command["want_ack"]
             hop_limit = command["hop_limit"]
+            ack_callback = self.onAckNak if want_ack else None
 
             if command["mode"] == "group":
                 logger.info("📝 Plaintext MQTT command -> group channel %s: %s", channel_index, text)
-                self.iface.sendText(
+                sent_packet = self.iface.sendText(
                     text,
                     destinationId="^all",
                     wantAck=want_ack,
+                    onResponse=ack_callback,
                     channelIndex=channel_index,
                     hopLimit=hop_limit,
                 )
             else:
                 destination_id = command["destination_id"]
                 logger.info("📝 Plaintext MQTT command -> direct %s on channel %s: %s", destination_id, channel_index, text)
-                self.iface.sendText(
+                sent_packet = self.iface.sendText(
                     text,
                     destinationId=destination_id,
                     wantAck=want_ack,
+                    onResponse=ack_callback,
                     channelIndex=channel_index,
                     hopLimit=hop_limit,
                 )
+            if want_ack:
+                self._remember_pending_ack(command, sent_packet)
         except Exception as e:
             logger.error("❌ Failed to send plaintext MQTT command: %s", e)
 
@@ -281,6 +292,7 @@ class MQTTProxy:
 
             body["mode"] = "group"
             body["channel_index"] = channel_index
+            body["command_topic"] = topic
             return body
 
         if mode == "direct":
@@ -291,6 +303,7 @@ class MQTTProxy:
 
             body["mode"] = "direct"
             body["destination_id"] = destination_id
+            body["command_topic"] = topic
             return body
 
         logger.warning("⚠️ Unsupported plaintext command topic: %s", topic)
@@ -304,6 +317,7 @@ class MQTTProxy:
             "channel_index": 0,
             "want_ack": False,
             "hop_limit": None,
+            "client_ref": None,
         }
 
         if not text_payload:
@@ -317,10 +331,113 @@ class MQTTProxy:
                 result["want_ack"] = bool(data.get("want_ack", False))
                 hop_limit = data.get("hop_limit")
                 result["hop_limit"] = int(hop_limit) if hop_limit is not None else None
+                client_ref = data.get("client_ref")
+                result["client_ref"] = str(client_ref).strip() if client_ref is not None else None
             except Exception as e:
                 logger.warning("⚠️ Failed to parse plaintext command JSON payload, falling back to raw text: %s", e)
 
         return result
+
+    def _remember_pending_ack(self, command, sent_packet):
+        """Store outgoing plaintext ACK tracking in memory for one minute."""
+        packet_id = getattr(sent_packet, "id", None)
+        if packet_id is None:
+            logger.warning("âš ï¸ Plaintext command requested ACK but sendText returned no packet id")
+            return
+
+        client_ref = command.get("client_ref") or f"pkt-{packet_id}"
+        entry = {
+            "packet_id": int(packet_id),
+            "client_ref": client_ref,
+            "created_at": int(time.time()),
+            "mode": command.get("mode"),
+            "text": command.get("text"),
+            "channel_index": command.get("channel_index"),
+            "destination_id": command.get("destination_id", "^all"),
+            "command_topic": command.get("command_topic"),
+        }
+
+        with self.pending_ack_lock:
+            self.pending_acks[int(packet_id)] = entry
+
+        if getattr(cfg, "verbose", False):
+            logger.info("Tracking ACK packet_id=%s client_ref=%s", packet_id, client_ref)
+
+        self._publish_ack_event(entry, "sent", source="send")
+
+    def _publish_ack_event(self, entry, status, packet=None, source=None, error_reason=None):
+        """Publish ACK lifecycle events for plaintext MQTT sends."""
+        if not self.mqtt_handler:
+            return
+
+        payload = {
+            "status": status,
+            "client_ref": entry.get("client_ref"),
+            "packet_id": entry.get("packet_id"),
+            "mode": entry.get("mode"),
+            "destination_id": entry.get("destination_id"),
+            "channel_index": entry.get("channel_index"),
+            "text": entry.get("text"),
+            "command_topic": entry.get("command_topic"),
+            "created_at": entry.get("created_at"),
+            "resolved_at": int(time.time()),
+        }
+        if source:
+            payload["source"] = source
+        if error_reason:
+            payload["error_reason"] = error_reason
+        if packet is not None:
+            payload["response_packet"] = packet
+
+        base_topic = f"{self.mqtt_handler.mqtt_root}/proxy/ack"
+        self.mqtt_handler.publish_json(f"{base_topic}/all", payload)
+        if entry.get("client_ref"):
+            self.mqtt_handler.publish_json(f"{base_topic}/{entry['client_ref']}", payload)
+
+    def _resolve_pending_ack(self, packet_id, status, packet=None, source=None, error_reason=None):
+        """Resolve a tracked ACK/NAK/timeout by packet id."""
+        try:
+            packet_id = int(packet_id)
+        except (TypeError, ValueError):
+            return False
+
+        with self.pending_ack_lock:
+            entry = self.pending_acks.pop(packet_id, None)
+
+        if not entry:
+            return False
+
+        self._publish_ack_event(entry, status, packet=packet, source=source, error_reason=error_reason)
+        return True
+
+    def _expire_pending_acks(self, current_time):
+        """Expire pending ACK correlations after one minute."""
+        expired_entries = []
+        with self.pending_ack_lock:
+            for packet_id, entry in list(self.pending_acks.items()):
+                if current_time - entry.get("created_at", 0) >= self.pending_ack_ttl_seconds:
+                    expired_entries.append(self.pending_acks.pop(packet_id))
+
+        for entry in expired_entries:
+            self._publish_ack_event(entry, "timeout", source="expiry")
+
+    def onAckNak(self, packet):
+        """Handle explicit ACK/NAK responses from meshtastic-python."""
+        decoded = packet.get("decoded") or {}
+        request_id = decoded.get("requestId")
+        if request_id is None:
+            request_id = decoded.get("request_id")
+        if request_id is None:
+            return
+
+        routing = decoded.get("routing") or {}
+        error_reason = routing.get("errorReason") or routing.get("error_reason") or "NONE"
+        status = "ack" if error_reason == "NONE" else "nak"
+        self._resolve_pending_ack(request_id, status, packet=packet, source="response_handler", error_reason=error_reason)
+
+    def on_meshtastic_ack(self, packetId, interface=None, **kwargs):
+        """Handle implicit ACK notifications from the Meshtastic mixin."""
+        self._resolve_pending_ack(packetId, "ack", source="implicit_ack")
 
     def on_radio_packet_received(self, packet, interface=None, **kwargs):
         """Publish received packets through the listener pipeline when enabled."""

@@ -156,6 +156,21 @@ Rules:
 - Direct topics default to channel `0`.
 - JSON can override `channel`, `want_ack`, and `hop_limit`.
 
+For ACK correlation, include a `client_ref` in the JSON payload:
+
+```json
+{"text":"Hallo direkt","channel":0,"want_ack":true,"client_ref":"msg-001"}
+```
+
+ACK lifecycle topics:
+
+```text
+<root>/proxy/ack/all
+<root>/proxy/ack/<client_ref>
+```
+
+The proxy keeps ACK correlation entries only in memory and expires them after 60 seconds.
+
 ## Queue and Forwarding
 
 | Variable | Type | Default | Description |

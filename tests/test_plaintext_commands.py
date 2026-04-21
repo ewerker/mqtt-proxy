@@ -90,6 +90,7 @@ def test_group_plaintext_command_sends_without_queueing():
         "Test Kanal 1",
         destinationId="^all",
         wantAck=False,
+        onResponse=None,
         channelIndex=1,
         hopLimit=None,
     )

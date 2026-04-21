@@ -189,6 +189,19 @@ Optional JSON payload:
 
 For group topics, the channel index from the topic is used. For direct topics, channel `0` is used unless a JSON payload overrides it.
 
+If you want ACK correlation over MQTT, include a `client_ref` in the JSON payload:
+
+```json
+{"text":"Hallo direkt","channel":0,"want_ack":true,"client_ref":"msg-001"}
+```
+
+ACK lifecycle events are published to:
+
+- `msh/<region>/proxy/ack/all`
+- `msh/<region>/proxy/ack/<client_ref>`
+
+The proxy keeps ACK correlations in memory for 60 seconds and then emits a `timeout` status if no ACK arrives in that window.
+
 ## Node Requirements
 
 The node should have MQTT enabled and configured, for example:
