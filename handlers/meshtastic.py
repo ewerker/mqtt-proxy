@@ -106,16 +106,11 @@ class MQTTProxyMixin:
                     except Exception as e:
                         pass
 
-                # 4. Standard Mesh Packet Logging (Debug)
-                elif decoded.packet and decoded.packet.to:
-                    # Logs generic traffic for debugging
-                    pub.sendMessage("proxy.receive.raw", packet=decoded.packet, interface=self)
-
         except Exception as e:
             # Expected protobuf parsing errors - log at debug level
             logger.debug("⚠️ Error in MQTT proxy interception: %s", e)
 
-        # 5. Safe Super Call
+        # 4. Safe Super Call
         # Always call super to let the library maintain its state, but prevent crashes
         try:
             super()._handleFromRadio(fromRadio)

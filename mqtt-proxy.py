@@ -87,7 +87,6 @@ class MQTTProxy:
                 self.message_queue.start()
                 
                 # Main Loop
-                last_heartbeat = 0
                 while self.running and self.iface:
                     time.sleep(1)
                     current_time = time.time()

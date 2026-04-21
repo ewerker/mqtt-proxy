@@ -130,6 +130,8 @@ See [CONFIG.md](CONFIG.md) for detailed configuration options.
 
 The fork adds a receive listener mode that mirrors packets seen by the local node to dedicated JSON MQTT topics. This mode reads MQTT broker credentials from the node configuration, listens on Meshtastic's stable `meshtastic.receive` event, and publishes structured records for downstream tools.
 
+The listener is additive. It does not replace the original `mqttClientProxyMessage` flow, so MQTT traffic can still be forwarded from the broker to the node and from the node back to MQTT.
+
 Example:
 
 ```env

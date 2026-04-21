@@ -100,8 +100,7 @@ BLE support requires custom implementation using the `bleak` library. See the [m
 | `MQTT_LISTENER_GROUP_ONLY` | boolean | `false` | Only mirror broadcast/group traffic |
 | `MQTT_LISTENER_TEXT_ONLY` | boolean | `false` | Only mirror text-like messages |
 
-> [!NOTE]
-> Backward compatibility is preserved for the older `MQTT_MIRROR_RX_ENABLED` and `MQTT_MIRROR_RX_PORTS` names. The new `MQTT_LISTENER_*` names take precedence when both are present.
+The listener is additive. The original bidirectional `mqttClientProxyMessage` path remains active, so MQTT-originated traffic can still be forwarded to the radio.
 
 
 ### Health Check Settings

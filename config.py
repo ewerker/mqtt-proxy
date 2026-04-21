@@ -74,17 +74,9 @@ class Config:
         self.mqtt_forward_retained = os.environ.get("MQTT_FORWARD_RETAINED", "false").lower() == "true"
 
         # Listener mode mirrors packets received by the local node to dedicated MQTT JSON topics.
-        # New listener keys take precedence, old mirror keys remain as compatibility fallbacks.
-        listener_enabled_raw = os.environ.get(
-            "MQTT_LISTENER_ENABLED",
-            os.environ.get("MQTT_MIRROR_RX_ENABLED", "false")
-        )
-        self.mqtt_listener_enabled = listener_enabled_raw.lower() == "true"
+        self.mqtt_listener_enabled = os.environ.get("MQTT_LISTENER_ENABLED", "false").lower() == "true"
 
-        listener_ports_raw = os.environ.get(
-            "MQTT_LISTENER_PORTS",
-            os.environ.get("MQTT_MIRROR_RX_PORTS", "")
-        )
+        listener_ports_raw = os.environ.get("MQTT_LISTENER_PORTS", "")
         self.mqtt_listener_ports = {
             port.strip().upper()
             for port in listener_ports_raw.split(",")
@@ -93,10 +85,6 @@ class Config:
         self.mqtt_listener_dm_only = os.environ.get("MQTT_LISTENER_DM_ONLY", "false").lower() == "true"
         self.mqtt_listener_group_only = os.environ.get("MQTT_LISTENER_GROUP_ONLY", "false").lower() == "true"
         self.mqtt_listener_text_only = os.environ.get("MQTT_LISTENER_TEXT_ONLY", "false").lower() == "true"
-
-        # Backward-compatible aliases for older mirror naming.
-        self.mqtt_mirror_rx_enabled = self.mqtt_listener_enabled
-        self.mqtt_mirror_rx_ports = self.mqtt_listener_ports
         
         # Extra MQTT root topics for cross-region monitoring
         # Comma-separated list with optional prefixes, e.g. "msh/US/OH:Ohio,msh/US/CA"
