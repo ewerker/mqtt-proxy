@@ -1,14 +1,13 @@
 import os
 import sys
 import pytest
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import MagicMock, patch
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from handlers.meshtastic import MQTTProxyMixin, RawSerialInterface, create_interface
 from meshtastic import mesh_pb2
-from meshtastic.protobuf import portnums_pb2
 from google.protobuf.message import DecodeError
 
 class MockProxy:
@@ -62,67 +61,12 @@ def test_handle_from_radio_malformed_bytes():
     # Should not crash
     MQTTProxyMixin._handleFromRadio(mixin, b"invalid garbage")
 
-def test_implicit_ack_detection():
+def test_routing_packets_no_longer_emit_custom_ack_events():
     proxy = MockProxy()
     mixin = MixinTestHelper(proxy)
-    
-    from_radio = mesh_pb2.FromRadio()
-    packet = from_radio.packet
-    packet.decoded.portnum = portnums_pb2.ROUTING_APP
-    packet.decoded.request_id = 999
-    # Valid sender (not 0, not self)
-    setattr(packet, "from", 0x87654321)
-    
-    routing = mesh_pb2.Routing()
-    routing.error_reason = mesh_pb2.Routing.Error.NONE
-    packet.decoded.payload = routing.SerializeToString()
-    
-    with patch('pubsub.pub.sendMessage') as mock_pub:
-        # DO NOT patch the method we are calling
-        MQTTProxyMixin._handleFromRadio(mixin, from_radio)
-             
-        # Check if meshtastic.ack was sent
-        # We use ANY for interface to avoid mismatch in mock objects vs 'mixin'
-        mock_pub.assert_any_call("meshtastic.ack", packetId=999, interface=ANY)
 
-def test_implicit_ack_suppression_self():
-    """Test that implicit ACK from SELF is ignored."""
-    proxy = MockProxy()
-    mixin = MixinTestHelper(proxy)
-    
-    from_radio = mesh_pb2.FromRadio()
-    packet = from_radio.packet
-    packet.decoded.portnum = portnums_pb2.ROUTING_APP
-    packet.decoded.request_id = 888
-    # Sender is SELF
-    setattr(packet, "from", proxy.myNodeNum)
-    
-    routing = mesh_pb2.Routing()
-    routing.error_reason = mesh_pb2.Routing.Error.NONE
-    packet.decoded.payload = routing.SerializeToString()
-    
     with patch('pubsub.pub.sendMessage') as mock_pub:
-        MQTTProxyMixin._handleFromRadio(mixin, from_radio)
-        mock_pub.assert_not_called()
-
-def test_implicit_ack_suppression_sender_zero():
-    """Test that implicit ACK with sender=0 (local routing) is ignored."""
-    proxy = MockProxy()
-    mixin = MixinTestHelper(proxy)
-    
-    from_radio = mesh_pb2.FromRadio()
-    packet = from_radio.packet
-    packet.decoded.portnum = portnums_pb2.ROUTING_APP
-    packet.decoded.request_id = 777
-    # Sender is 0
-    setattr(packet, "from", 0)
-    
-    routing = mesh_pb2.Routing()
-    routing.error_reason = mesh_pb2.Routing.Error.NONE
-    packet.decoded.payload = routing.SerializeToString()
-    
-    with patch('pubsub.pub.sendMessage') as mock_pub:
-        MQTTProxyMixin._handleFromRadio(mixin, from_radio)
+        MQTTProxyMixin._handleFromRadio(mixin, mesh_pb2.FromRadio())
         mock_pub.assert_not_called()
 
 def test_handle_from_radio_super_crash_handling():

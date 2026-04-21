@@ -63,7 +63,6 @@ class MQTTProxy:
         self.last_status_log_time = 0
 
         pub.subscribe(self.on_radio_packet_received, "meshtastic.receive")
-        pub.subscribe(self.on_meshtastic_ack, "meshtastic.ack")
 
     def start(self):
         if getattr(cfg, "verbose", False):
@@ -421,7 +420,7 @@ class MQTTProxy:
             self._publish_ack_event(entry, "timeout", source="expiry")
 
     def onAckNak(self, packet):
-        """Handle explicit ACK/NAK responses from meshtastic-python."""
+        """Classify ACK/NAK responses like the working mass_com tool."""
         decoded = packet.get("decoded") or {}
         request_id = decoded.get("requestId")
         if request_id is None:
@@ -431,12 +430,13 @@ class MQTTProxy:
 
         routing = decoded.get("routing") or {}
         error_reason = routing.get("errorReason") or routing.get("error_reason") or "NONE"
-        status = "ack" if error_reason == "NONE" else "nak"
+        if error_reason != "NONE":
+            status = "nak"
+        else:
+            packet_from = packet.get("from")
+            local_num = getattr(getattr(self.iface, "localNode", None), "nodeNum", None)
+            status = "implicit_ack" if local_num is not None and packet_from == local_num else "ack"
         self._resolve_pending_ack(request_id, status, packet=packet, source="response_handler", error_reason=error_reason)
-
-    def on_meshtastic_ack(self, packetId, interface=None, **kwargs):
-        """Handle implicit ACK notifications from the Meshtastic mixin."""
-        self._resolve_pending_ack(packetId, "ack", source="implicit_ack")
 
     def on_radio_packet_received(self, packet, interface=None, **kwargs):
         """Publish received packets through the listener pipeline when enabled."""

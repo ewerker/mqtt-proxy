@@ -52,6 +52,7 @@ def test_ack_tracking_publishes_sent_and_ack():
     proxy = MQTTProxy()
     proxy.mqtt_handler = DummyMqttHandler()
     proxy.iface = MagicMock()
+    proxy.iface.localNode.nodeNum = 0x49B65BC8
     proxy.message_queue = MagicMock()
     proxy.iface.sendText.return_value = SimpleNamespace(id=4321)
 
@@ -75,7 +76,15 @@ def test_ack_tracking_publishes_sent_and_ack():
     assert len(sent_statuses) == 1
     assert sent_statuses[0][0] == "msh/EU_868/proxy/ack/ack-test-1"
 
-    proxy.on_meshtastic_ack(4321)
+    proxy.onAckNak(
+        {
+            "from": 0x13C2288B,
+            "decoded": {
+                "requestId": 4321,
+                "routing": {"errorReason": "NONE"},
+            },
+        }
+    )
 
     ack_statuses = [item for item in proxy.mqtt_handler.published if item[1]["status"] == "ack"]
     assert len(ack_statuses) == 1
@@ -83,10 +92,89 @@ def test_ack_tracking_publishes_sent_and_ack():
     assert 4321 not in proxy.pending_acks
 
 
+def test_ack_tracking_classifies_implicit_ack_like_mass_com():
+    proxy = MQTTProxy()
+    proxy.mqtt_handler = DummyMqttHandler()
+    proxy.iface = MagicMock()
+    proxy.iface.localNode.nodeNum = 0x49B65BC8
+    proxy.message_queue = MagicMock()
+    proxy.iface.sendText.return_value = SimpleNamespace(id=6789)
+
+    payload = json.dumps(
+        {
+            "text": "Hallo direkt",
+            "channel": 0,
+            "want_ack": True,
+            "client_ref": "implicit-test-1",
+        }
+    ).encode("utf-8")
+
+    proxy.on_mqtt_message_to_radio(
+        "msh/EU_868/proxy/send/direct/!13c2288b",
+        payload,
+        False,
+    )
+
+    proxy.onAckNak(
+        {
+            "from": 0x49B65BC8,
+            "decoded": {
+                "requestId": 6789,
+                "routing": {"errorReason": "NONE"},
+            },
+        }
+    )
+
+    implicit_statuses = [item for item in proxy.mqtt_handler.published if item[1]["status"] == "implicit_ack"]
+    assert len(implicit_statuses) == 1
+    assert implicit_statuses[0][0] == "msh/EU_868/proxy/ack/implicit-test-1"
+    assert 6789 not in proxy.pending_acks
+
+
+def test_ack_tracking_classifies_nak():
+    proxy = MQTTProxy()
+    proxy.mqtt_handler = DummyMqttHandler()
+    proxy.iface = MagicMock()
+    proxy.iface.localNode.nodeNum = 0x49B65BC8
+    proxy.message_queue = MagicMock()
+    proxy.iface.sendText.return_value = SimpleNamespace(id=2468)
+
+    payload = json.dumps(
+        {
+            "text": "Hallo direkt",
+            "channel": 0,
+            "want_ack": True,
+            "client_ref": "nak-test-1",
+        }
+    ).encode("utf-8")
+
+    proxy.on_mqtt_message_to_radio(
+        "msh/EU_868/proxy/send/direct/!13c2288b",
+        payload,
+        False,
+    )
+
+    proxy.onAckNak(
+        {
+            "from": 0x13C2288B,
+            "decoded": {
+                "requestId": 2468,
+                "routing": {"errorReason": "NO_RESPONSE"},
+            },
+        }
+    )
+
+    nak_statuses = [item for item in proxy.mqtt_handler.published if item[1]["status"] == "nak"]
+    assert len(nak_statuses) == 1
+    assert nak_statuses[0][0] == "msh/EU_868/proxy/ack/nak-test-1"
+    assert 2468 not in proxy.pending_acks
+
+
 def test_ack_tracking_times_out_after_one_minute():
     proxy = MQTTProxy()
     proxy.mqtt_handler = DummyMqttHandler()
     proxy.iface = MagicMock()
+    proxy.iface.localNode.nodeNum = 0x49B65BC8
     proxy.message_queue = MagicMock()
     proxy.iface.sendText.return_value = SimpleNamespace(id=5555)
 
