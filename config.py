@@ -88,9 +88,16 @@ class Config:
             for port in listener_ports_raw.split(",")
             if port.strip()
         }
+        listener_exclude_ports_raw = os.environ.get("MQTT_LISTENER_EXCLUDE_PORTS", "")
+        self.mqtt_listener_exclude_ports = {
+            port.strip().upper()
+            for port in listener_exclude_ports_raw.split(",")
+            if port.strip()
+        }
         self.mqtt_listener_dm_only = os.environ.get("MQTT_LISTENER_DM_ONLY", "false").lower() == "true"
         self.mqtt_listener_group_only = os.environ.get("MQTT_LISTENER_GROUP_ONLY", "false").lower() == "true"
         self.mqtt_listener_text_only = os.environ.get("MQTT_LISTENER_TEXT_ONLY", "false").lower() == "true"
+        self.mqtt_listener_include_raw = os.environ.get("MQTT_LISTENER_INCLUDE_RAW", "true").lower() == "true"
 
         # Periodic node list snapshot publication.
         self.mqtt_node_list_enabled = os.environ.get("MQTT_NODE_LIST_ENABLED", "true").lower() == "true"

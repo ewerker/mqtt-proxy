@@ -60,18 +60,22 @@ The command line also accepts the alias `--verbode`.
 |----------|------|---------|-------------|
 | `MQTT_LISTENER_ENABLED` | boolean | `false` | Enable JSON mirroring of received packets |
 | `MQTT_LISTENER_PORTS` | string | `""` | Optional comma-separated `decoded.portnum` allowlist |
+| `MQTT_LISTENER_EXCLUDE_PORTS` | string | `""` | Optional comma-separated `decoded.portnum` blocklist |
 | `MQTT_LISTENER_DM_ONLY` | boolean | `false` | Only mirror direct messages |
 | `MQTT_LISTENER_GROUP_ONLY` | boolean | `false` | Only mirror broadcast/group messages |
 | `MQTT_LISTENER_TEXT_ONLY` | boolean | `false` | Only mirror text-like messages |
+| `MQTT_LISTENER_INCLUDE_RAW` | boolean | `true` | Include the full packet object in mirrored JSON |
 
 Example:
 
 ```env
 MQTT_LISTENER_ENABLED=true
 MQTT_LISTENER_PORTS=TEXT_MESSAGE_APP,POSITION_APP,TELEMETRY_APP
+MQTT_LISTENER_EXCLUDE_PORTS=ROUTING_APP,ADMIN_APP
 MQTT_LISTENER_DM_ONLY=false
 MQTT_LISTENER_GROUP_ONLY=false
 MQTT_LISTENER_TEXT_ONLY=false
+MQTT_LISTENER_INCLUDE_RAW=false
 ```
 
 Published topics:
@@ -84,6 +88,20 @@ Published topics:
 ```
 
 The listener is additive. The original bidirectional `mqttClientProxyMessage` path remains active.
+
+Common Meshtastic `portnum` values worth filtering:
+
+- `TEXT_MESSAGE_APP`
+- `TELEMETRY_APP`
+- `POSITION_APP`
+- `NODEINFO_APP`
+- `NEIGHBORINFO_APP`
+- `ROUTING_APP`
+- `TRACEROUTE_APP`
+- `WAYPOINT_APP`
+- `STORE_FORWARD_APP`
+- `RANGE_TEST_APP`
+- `ADMIN_APP`
 
 ## Periodic Node List Export
 

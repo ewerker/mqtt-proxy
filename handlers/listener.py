@@ -123,6 +123,10 @@ class ReceiveMirrorListener:
         if allowed_ports and portnum not in allowed_ports:
             return False
 
+        excluded_ports = getattr(self.config, "mqtt_listener_exclude_ports", set())
+        if excluded_ports and portnum in excluded_ports:
+            return False
+
         if getattr(self.config, "mqtt_listener_dm_only", False) and not is_direct_message(packet):
             return False
 
@@ -151,7 +155,7 @@ class ReceiveMirrorListener:
         scope = "dm" if is_direct_message(packet_copy) else "group"
         portnum = str(decoded.get("portnum") or "UNKNOWN_APP").upper()
 
-        return {
+        record = {
             "mirrored_at": int(time.time()),
             "from_id": from_id,
             "from_label": sender_label(interface, from_id),
@@ -164,5 +168,7 @@ class ReceiveMirrorListener:
             "rx_rssi": packet_copy.get("rxRssi"),
             "hop_limit": packet_copy.get("hopLimit"),
             "channel": packet_copy.get("channel"),
-            "packet": packet_copy,
         }
+        if getattr(self.config, "mqtt_listener_include_raw", True):
+            record["packet"] = packet_copy
+        return record

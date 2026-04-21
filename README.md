@@ -102,9 +102,11 @@ Core variables:
 | `LOG_LEVEL` | `INFO` | Log level |
 | `MQTT_LISTENER_ENABLED` | `false` | Enable JSON listener mirror |
 | `MQTT_LISTENER_PORTS` | `""` | Optional `decoded.portnum` allowlist |
+| `MQTT_LISTENER_EXCLUDE_PORTS` | `""` | Optional `decoded.portnum` blocklist |
 | `MQTT_LISTENER_DM_ONLY` | `false` | Only mirror direct messages |
 | `MQTT_LISTENER_GROUP_ONLY` | `false` | Only mirror group traffic |
 | `MQTT_LISTENER_TEXT_ONLY` | `false` | Only mirror text-like messages |
+| `MQTT_LISTENER_INCLUDE_RAW` | `true` | Include full packet payload in mirrored JSON |
 
 See [CONFIG.md](C:\Users\richt\Documents\Codex\mqtt%20Proxy\mqtt-proxy\CONFIG.md) for the full reference.
 
@@ -118,6 +120,28 @@ When the listener is enabled, received packets are mirrored to:
 - `msh/<region>/proxy/rx/!<gateway>/scope/group`
 
 The listener is additive. The original broker-to-node and node-to-broker proxy path remains active.
+
+Useful Meshtastic port filters include:
+
+- `TEXT_MESSAGE_APP`
+- `TELEMETRY_APP`
+- `POSITION_APP`
+- `NODEINFO_APP`
+- `NEIGHBORINFO_APP`
+- `TRACEROUTE_APP`
+- `WAYPOINT_APP`
+- `STORE_FORWARD_APP`
+- `RANGE_TEST_APP`
+- `ROUTING_APP`
+- `ADMIN_APP`
+
+Example filter setup:
+
+```env
+MQTT_LISTENER_PORTS=TEXT_MESSAGE_APP,TELEMETRY_APP,POSITION_APP,NODEINFO_APP
+MQTT_LISTENER_EXCLUDE_PORTS=ROUTING_APP,ADMIN_APP
+MQTT_LISTENER_INCLUDE_RAW=false
+```
 
 ## Periodic Node List
 
