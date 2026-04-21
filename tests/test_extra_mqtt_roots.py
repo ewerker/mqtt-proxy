@@ -69,8 +69,10 @@ class TestExtraMqttRootsSubscription:
         mock_client = MagicMock()
         handler._on_connect(mock_client, None, None, 0)
         subscribe_calls = mock_client.subscribe.call_args_list
-        assert len(subscribe_calls) == 1
-        assert subscribe_calls[0] == call("msh/US/MI/2/e/#")
+        topics = [c[0][0] for c in subscribe_calls]
+        assert "msh/US/MI/2/e/#" in topics
+        assert "msh/US/MI/proxy/send/#" in topics
+        assert len(topics) == 2
 
     def test_extra_roots_subscribed(self):
         handler = self._make_handler([("msh/US/OH", "OH"), ("msh/US/CA", "CA")])
@@ -79,9 +81,10 @@ class TestExtraMqttRootsSubscription:
         subscribe_calls = mock_client.subscribe.call_args_list
         topics = [c[0][0] for c in subscribe_calls]
         assert "msh/US/MI/2/e/#" in topics
+        assert "msh/US/MI/proxy/send/#" in topics
         assert "msh/US/OH/2/e/#" in topics
         assert "msh/US/CA/2/e/#" in topics
-        assert len(topics) == 3
+        assert len(topics) == 4
 
     def test_duplicate_root_not_subscribed_twice(self):
         handler = self._make_handler([("msh/US/MI", "MI"), ("msh/US/OH", "OH")])
@@ -90,8 +93,9 @@ class TestExtraMqttRootsSubscription:
         subscribe_calls = mock_client.subscribe.call_args_list
         topics = [c[0][0] for c in subscribe_calls]
         assert topics.count("msh/US/MI/2/e/#") == 1
+        assert topics.count("msh/US/MI/proxy/send/#") == 1
         assert "msh/US/OH/2/e/#" in topics
-        assert len(topics) == 2
+        assert len(topics) == 3
 
 class TestExtraRootVirtualChannels:
     """Test that extra-root packets are rewritten to Virtual Channels."""

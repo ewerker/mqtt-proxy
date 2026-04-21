@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*.*.*"
+      - "alpha-*"
   workflow_dispatch:
     inputs:
       tag_name:
@@ -14,37 +15,7 @@ permissions:
   contents: write
 
 jobs:
-  build-windows-exe:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.inputs.tag_name || github.ref }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-          
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
-
-      - name: Build Executable
-        run: |
-          pyinstaller --name mqtt-proxy-windows-amd64 --onefile --console --runtime-tmpdir "%LOCALAPPDATA%\Temp" mqtt-proxy.py
-
-      - name: Upload Artifact for Release
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-binary
-          path: dist/mqtt-proxy-windows-amd64.exe
-
   release:
-    needs: build-windows-exe
     runs-on: ubuntu-latest
     steps:
       - name: Resolve tag name
@@ -58,20 +29,18 @@ jobs:
         with:
           ref: ${{ steps.tag.outputs.tag }}
 
-      - name: Download Windows Binary
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-binary
-          path: release-assets/
-
       - name: Extract Release Notes
         shell: bash
         run: |
           python3 -c "
           import os, re
-          version = '${{ steps.tag.outputs.tag }}'.replace('v', '')
+          tag = '${{ steps.tag.outputs.tag }}'
+          version = tag.replace('v', '')
           notes_path = 'RELEASE_NOTES.md'
+          default_notes = f'Release {tag}'
           if not os.path.exists(notes_path):
+              with open('latest_notes.md', 'w', encoding='utf-8') as f:
+                  f.write(default_notes)
               exit(0)
           with open(notes_path, 'r', encoding='utf-8') as f:
               lines = f.readlines()
@@ -82,6 +51,8 @@ jobs:
                   start = i
                   break
           if start == -1:
+              with open('latest_notes.md', 'w', encoding='utf-8') as f:
+                  f.write(default_notes)
               exit(0)
           notes = []
           for i in range(start + 1, len(lines)):
@@ -93,7 +64,7 @@ jobs:
                   continue
               notes.append(lines[i])
           with open('latest_notes.md', 'w', encoding='utf-8') as f:
-              f.write(''.join(notes).strip())
+              f.write(''.join(notes).strip() or default_notes)
           "
 
       - name: Create or Update Release
@@ -102,12 +73,10 @@ jobs:
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists. Uploading asset..."
-            gh release upload "$TAG" release-assets/mqtt-proxy-windows-amd64.exe --clobber
+            echo "Release $TAG already exists."
           else
             echo "Creating new release $TAG..."
             gh release create "$TAG" \
               --title "$TAG" \
-              --notes-file latest_notes.md \
-              release-assets/mqtt-proxy-windows-amd64.exe
+              --notes-file latest_notes.md
           fi

@@ -1,596 +1,180 @@
 # Meshtastic MQTT Proxy
 
-A production-ready MQTT proxy for Meshtastic devices that enables bidirectional message forwarding between Meshtastic nodes and MQTT brokers. Supports TCP and Serial interface connections with a clean factory pattern architecture.
+Python-first MQTT proxy for Meshtastic nodes.
+
+This fork is focused on a simple local Python installation with `venv`, direct USB or TCP connectivity to a Meshtastic node, and practical MQTT tooling for monitoring and sending messages.
 
 ## Purpose / Zweck
 
 **English**
 
-This fork keeps the original MQTT proxy workflow, but also adds a practical USB-first workflow for local Meshtastic monitoring setups. The device is connected directly via Serial/TCP, the MQTT credentials are read from the node configuration, and received mesh traffic can be mirrored to dedicated JSON MQTT topics for downstream tools, dashboards, and custom automation.
+This fork keeps the original bidirectional `mqttClientProxyMessage` workflow, but adds a USB-first workflow for local Meshtastic setups. The proxy reads MQTT settings from the node configuration, mirrors received mesh traffic to dedicated JSON MQTT topics, and accepts simple plaintext MQTT send commands for group and direct messages.
 
 **Deutsch**
 
-Dieser Fork bewahrt den urspruenglichen MQTT-Proxy-Ansatz, erweitert ihn aber um einen praxisnahen USB-First-Workflow fuer lokale Meshtastic-Monitoring-Setups. Das Geraet wird direkt per Serial/TCP verbunden, die MQTT-Zugangsdaten werden aus der Node-Konfiguration gelesen, und empfangener Mesh-Verkehr kann auf eigene JSON-MQTT-Topics fuer Folge-Tools, Dashboards und Automatisierungen gespiegelt werden.
+Dieser Fork behält den ursprünglichen bidirektionalen `mqttClientProxyMessage`-Workflow bei, ergänzt ihn aber um einen praxisnahen USB-First-Ansatz für lokale Meshtastic-Setups. Der Proxy liest die MQTT-Einstellungen aus der Node-Konfiguration, spiegelt empfangenen Mesh-Verkehr auf eigene JSON-MQTT-Topics und akzeptiert einfache Plaintext-MQTT-Befehle für Gruppen- und Direktnachrichten.
 
 **Version**: 1.6.5
 
 ## Features
 
-- ✅ **Modular Architecture** - Clean separation of concerns with `config.py`, `handlers/mqtt.py`, `handlers/meshtastic.py`, and `handlers/queue.py`
-- ✅ **Multi-Interface Support** - TCP and Serial connections to Meshtastic nodes
-- ✅ **Bidirectional Forwarding** - Messages flow both ways between node and MQTT broker
-- ✅ **Message Queue** - Rate-limited transmission with drop-oldest eviction and configurable delay to prevent radio congestion
-- ✅ **Robust Packet Handling** - SafeInterfaceMixin prevents crashes from malformed packets
-- ✅ **Implicit ACK Restoration** - Intelligently bypasses loop protection for echoed packets, restoring the firmware's missing delivery confirmations (fixing the "Red X" issue)
-- ✅ **mqttClientProxyMessage Protocol** - Implements Meshtastic's official proxy protocol
-- ✅ **Docker Containerized** - Easy deployment with Docker Compose
-- ✅ **Environment Configuration** - Flexible configuration via environment variables
-- ✅ **Production Ready** - Error handling, logging, and automatic reconnection
-- ✅ **Channel Support** - Works with all Meshtastic channels and message types
-- ✅ **SSL/TLS Support** - Auto-configuration for secure brokers (matches iOS behavior)
-- ✅ **Traffic Optimization** - Smart subscription strategy (`msh/2/e/#`) to prevent serial link saturation
-- ✅ **Hammering Prevention** - Correctly flags retained messages to avoid `NO_RESPONSE` storms
-- ✅ **Channel Filtering** - Respects `uplink_enabled` and `downlink_enabled` channel settings
-- ✅ **Virtual Channels** - Monitor cross-region MQTT traffic via `EXTRA_MQTT_ROOTS` without RF crosstalk (payload mutation prevents radio decryption & rebroadcast)
-- ✅ **MeshMonitor Compatible** - Seamless integration with MeshMonitor and other tools
+- Bidirectional MQTT proxying between node and broker
+- TCP and Serial support
+- Listener-based JSON mirroring via `meshtastic.receive`
+- Plaintext MQTT send commands for group and direct messages
+- TLS support based on node MQTT config
+- Channel uplink/downlink filtering based on node settings
+- Virtual channel support via `EXTRA_MQTT_ROOTS`
+- Windows-friendly startup scripts
 
-**Note:** BLE interface is not currently supported. Use TCP or Serial interfaces.
+## Requirements
+
+- Python 3.10+
+- A Meshtastic node reachable via TCP or Serial
+- MQTT configured on the node
 
 ## Quick Start
 
-> [!NOTE]
-> The Docker setup below is designed for **Linux** systems. For Windows and macOS, see the [Platform Support](#platform-support) section.
-
-### Prerequisites
-
-- Docker and Docker Compose (Linux)
-- Meshtastic node (accessible via TCP or Serial)
-- MQTT broker (configured on your Meshtastic node)
-
-### Installation
-
 1. Clone the repository:
+
 ```bash
-git clone https://github.com/LN4CY/mqtt-proxy.git
+git clone https://github.com/ewerker/mqtt-proxy.git
 cd mqtt-proxy
 ```
 
-2. Create `.env` file:
+2. Create a virtual environment:
+
 ```bash
-cp .env.example .env
+python -m venv .venv
 ```
 
-3. Configure your connection in `.env`:
+3. Install dependencies:
+
+```bash
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+4. Create a local `.env` from [\.env.example](C:\Users\richt\Documents\Codex\mqtt%20Proxy\mqtt-proxy\.env.example) and adjust your interface settings:
+
 ```env
-INTERFACE_TYPE=tcp
-TCP_NODE_HOST=192.168.1.100
-TCP_NODE_PORT=4403
+INTERFACE_TYPE=serial
+SERIAL_PORT=COM7
+LOG_LEVEL=INFO
+MQTT_LISTENER_ENABLED=true
 ```
 
-4. Start the proxy:
-```bash
-docker compose up -d
+5. Start the proxy:
+
+```cmd
+start-mqtt-proxy.cmd
 ```
 
-### Quick Start (Pre-built Image)
+## Windows Start
 
-You can run the proxy directly without cloning the code using the pre-built image from GitHub Container Registry:
+The preferred Windows entry point is [start-mqtt-proxy.cmd](C:\Users\richt\Documents\Codex\mqtt%20Proxy\mqtt-proxy\start-mqtt-proxy.cmd). It loads `.env` and starts the proxy from `.venv` without requiring PowerShell script execution.
 
-```bash
-docker run -d \
-  --name mqtt-proxy \
-  --net=host \
-  --restart unless-stopped \
-  -e INTERFACE_TYPE=tcp \
-  -e TCP_NODE_HOST=192.168.1.100 \
-  -e TCP_NODE_PORT=4403 \
-  ghcr.io/ln4cy/mqtt-proxy:latest
+Direct Python start is also possible:
+
+```powershell
+.\.venv\Scripts\python.exe mqtt-proxy.py --interface serial --serial-port COM7
 ```
 
 ## Configuration
 
-### Interface Types
-
-**TCP Interface** (default):
-```env
-INTERFACE_TYPE=tcp
-TCP_NODE_HOST=localhost
-TCP_NODE_PORT=4403
-```
-
-**Serial Interface**:
-```env
-INTERFACE_TYPE=serial
-SERIAL_PORT=/dev/ttyACM0
-```
-
-### Environment Variables
+Core variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `INTERFACE_TYPE` | `tcp` | Interface type: `tcp` or `serial` |
-| `TCP_NODE_HOST` | `localhost` | TCP hostname or IP address |
-| `TCP_NODE_PORT` | `4403` | TCP port number |
-| `SERIAL_PORT` | `/dev/ttyUSB0` | Serial device path |
-| `LOG_LEVEL` | `INFO` | Logging level |
-| `TCP_TIMEOUT` | `300` | TCP connection timeout (seconds) |
-| `CONFIG_WAIT_TIMEOUT` | `60` | Node config wait timeout (seconds) |
-| `POLL_INTERVAL` | `1` | Config polling interval (seconds) |
-| `MESH_TRANSMIT_DELAY` | `0.5` | Delay between packets for rate limiting (seconds) |
-| `MESH_ALLOW_UNCONFIGURED_CHANNELS` | `true` | Allow forwarding messages for unconfigured channels |
-| `MQTT_LISTENER_ENABLED` | `false` | Mirror received mesh packets to JSON MQTT topics via `meshtastic.receive` |
-| `MQTT_LISTENER_PORTS` | `""` | Optional comma-separated `decoded.portnum` filter list |
-| `MQTT_LISTENER_DM_ONLY` | `false` | Only publish direct messages addressed to the local node |
-| `MQTT_LISTENER_GROUP_ONLY` | `false` | Only publish broadcast/group traffic |
-| `MQTT_LISTENER_TEXT_ONLY` | `false` | Only publish text-like messages |
+| `INTERFACE_TYPE` | `tcp` | `tcp` or `serial` |
+| `TCP_NODE_HOST` | `localhost` | TCP node host |
+| `TCP_NODE_PORT` | `4403` | TCP node port |
+| `SERIAL_PORT` | `/dev/ttyUSB0` | Serial port |
+| `LOG_LEVEL` | `INFO` | Log level |
+| `MQTT_LISTENER_ENABLED` | `false` | Enable JSON listener mirror |
+| `MQTT_LISTENER_PORTS` | `""` | Optional `decoded.portnum` allowlist |
+| `MQTT_LISTENER_DM_ONLY` | `false` | Only mirror direct messages |
+| `MQTT_LISTENER_GROUP_ONLY` | `false` | Only mirror group traffic |
+| `MQTT_LISTENER_TEXT_ONLY` | `false` | Only mirror text-like messages |
 
-See [CONFIG.md](CONFIG.md) for detailed configuration options.
+See [CONFIG.md](C:\Users\richt\Documents\Codex\mqtt%20Proxy\mqtt-proxy\CONFIG.md) for the full reference.
 
-### Listener Mode
+## Listener Topics
 
-The fork adds a receive listener mode that mirrors packets seen by the local node to dedicated JSON MQTT topics. This mode reads MQTT broker credentials from the node configuration, listens on Meshtastic's stable `meshtastic.receive` event, and publishes structured records for downstream tools.
-
-The listener is additive. It does not replace the original `mqttClientProxyMessage` flow, so MQTT traffic can still be forwarded from the broker to the node and from the node back to MQTT.
-
-Example:
-
-```env
-MQTT_LISTENER_ENABLED=true
-MQTT_LISTENER_PORTS=TEXT_MESSAGE_APP,POSITION_APP,TELEMETRY_APP
-MQTT_LISTENER_DM_ONLY=false
-MQTT_LISTENER_GROUP_ONLY=false
-MQTT_LISTENER_TEXT_ONLY=false
-```
-
-Published topics:
+When the listener is enabled, received packets are mirrored to:
 
 - `msh/<region>/proxy/rx/!<gateway>/all`
 - `msh/<region>/proxy/rx/!<gateway>/port/<PORTNUM>`
 - `msh/<region>/proxy/rx/!<gateway>/scope/dm`
 - `msh/<region>/proxy/rx/!<gateway>/scope/group`
 
-### Plaintext Send Commands
+The listener is additive. The original broker-to-node and node-to-broker proxy path remains active.
 
-In addition to the original encrypted MQTT proxy flow, the fork also supports simple plaintext send commands over MQTT. These commands are handled directly by the proxy and translated into `sendText(...)` calls on the connected node.
+## Plaintext MQTT Send Commands
 
-Group send by channel number:
+The proxy subscribes to:
+
+- `msh/<region>/proxy/send/group/<channelIndex>`
+- `msh/<region>/proxy/send/direct/!<nodeId>`
+
+Examples:
 
 ```text
-Topic:   msh/<region>/proxy/send/group/<channelIndex>
-Payload: Hallo Gruppe
+Topic:   msh/EU_868/proxy/send/group/0
+Payload: Hallo Gruppe 0
 ```
 
-Direct send to a node:
-
 ```text
-Topic:   msh/<region>/proxy/send/direct/!<nodeId>
+Topic:   msh/EU_868/proxy/send/direct/!13c2288b
 Payload: Hallo direkt
 ```
 
-Optional JSON payloads are also supported:
+Optional JSON payload:
 
 ```json
-{"text":"Hallo direkt","channel":0,"want_ack":true,"hop_limit":3}
+{"text":"Hallo","channel":0,"want_ack":true,"hop_limit":3}
 ```
 
-## Health Monitoring & Recovery
+For group topics, the channel index from the topic is used. For direct topics, channel `0` is used unless a JSON payload overrides it.
 
-The proxy implements a robust health monitoring system to ensure reliable operation:
+## Node Requirements
 
-- **Connection Watchdog**: Automatically restarts if the Meshtastic connection is reported lost and doesn't recover within 60 seconds.
-- **Radio Activity Probe**: Actively probes the radio if silent for 5 minutes. If no response receives, restarts the container.
-- **MQTT Publish Watchdog**: Monitors MQTT publish success. If **5 consecutive publish attempts fail** (e.g., broker unavailable, auth error), the proxy forces a restart to attempt a clean reconnection.
+The node should have MQTT enabled and configured, for example:
 
-This self-healing behavior ensures the proxy recovers automatically from network interruptions without manual intervention.
-
-## Usage
-
-### TCP Interface
-
-Connect to a Meshtastic node via TCP (e.g., MeshMonitor's virtual node):
-
-```bash
-# .env
-INTERFACE_TYPE=tcp
-TCP_NODE_HOST=192.168.1.100
-TCP_NODE_PORT=4404
+```text
+mqtt.enabled: true
+mqtt.proxy_to_client_enabled: true
+mqtt.address: <broker>
+mqtt.username: <user>
+mqtt.password: <password>
 ```
 
-### Serial Interface
-
-Connect to a USB-connected Meshtastic device:
-
-```bash
-# .env
-INTERFACE_TYPE=serial
-SERIAL_PORT=/dev/ttyACM0
-```
-
-**Note:** Serial interface requires privileged mode (already configured in docker-compose.yml).
-
-### Viewing Logs
-
-```bash
-docker compose logs -f mqtt-proxy
-```
-
-### Subprocess Integration & Log Streaming
-
-If you are integrating `mqtt-proxy` as a child process inside another application (e.g., via Node.js `spawn` or `execFile`), you can pipe its output reliably. The proxy explicitly enforces **UTF-8 encoding** and **line-buffered streaming** for `sys.stdout` and `sys.stderr` when PIPED. 
-
-All proxy logs (including emojis) will stream instantly over standard IO without any buffering delays or Windows Console encoding crashes (`[WinError 10106]`).
-
-### Stopping the Proxy
-
-```bash
-docker compose down
-```
-
-## Platform Support
-
-### Linux (Primary Platform)
-The Docker setup is designed for Linux and works out of the box for both TCP and Serial interfaces.
-
-### Windows
-
-**Option 1: Self-Contained Executable (Click-and-Run - Recommended)**
-If you prefer not to manage Python environments or Docker on Windows, you can download a pre-built standalone `.exe` directly from the [GitHub Releases](https://github.com/LN4CY/mqtt-proxy/releases) page.
-
-1. Download the `mqtt-proxy-windows-amd64.exe` from the latest release.
-2. Open PowerShell or Command Prompt.
-3. Run the executable, passing your connection details as command-line arguments:
-
-```powershell
-# Example: Connecting to a MeshMonitor Virtual Node
-.\mqtt-proxy-windows-amd64.exe --interface tcp --tcp-host 127.0.0.1 --tcp-port 4404
-
-# Example: Connecting directly to a USB device
-.\mqtt-proxy-windows-amd64.exe --interface serial --serial-port COM3
-
-# Example: Check the version
-.\mqtt-proxy-windows-amd64.exe --version
-```
-
-> **Note:** You can also use a standard `.env` file in the same directory as the executable, and it will read those defaults automatically. Run `.\mqtt-proxy-windows-amd64.exe --help` to see all available configuration overrides!
-
-**Option 2: Run Natively with Python venv**
-Running via Python natively is great for development or if you already have Python installed.
-
-1. In the MeshMonitor Windows App, go to Settings and check **"Enable Virtual Node Server"**. This starts a local MeshNode server on port `4404` (Skip if using direct USB serial).
-2. Open PowerShell or Command Prompt.
-3. Create and activate a virtual environment:
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-```
-4. Install dependencies:
-```powershell
-pip install -r requirements.txt
-```
-5. Run the proxy with command-line arguments:
-```powershell
-# Connecting to Virtual Node
-python mqtt-proxy.py --interface tcp --tcp-host 127.0.0.1 --tcp-port 4404
-
-# Connecting to USB
-python mqtt-proxy.py --interface serial --serial-port COM3
-
-# Check the version
-python mqtt-proxy.py --version
-```
-
-**Option 3: Run via Docker Desktop**
-
-*TCP Interface:* 
-Docker Desktop for Windows works perfectly for TCP connections. You can use the standard `docker-compose.yml` configuration out-of-the-box.
-
-*Serial Interface (USB):* 
-Docker on Windows **does not support USB passthrough directly** because Docker runs in WSL2. If you absolutely must use Docker for a USB serial connection on Windows, you can bridge it with `usbipd`:
-1. Install [usbipd-win](https://github.com/dorssel/usbipd-win)
-2. Attach device: `usbipd wsl attach --busid <BUSID>`
-3. Device appears as `/dev/ttyACM0` in WSL2/Docker
-
-### macOS
-
-**TCP Interface:**
-Docker Desktop for Mac works perfectly for TCP connections. Use the standard `docker-compose.yml`.
-
-**Serial Interface (USB):**
-Docker on macOS **does not support USB passthrough directly** because Docker runs in a VM.
-
-**Option A: Run Natively with venv (Recommended)**
-```bash
-# Create and activate virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Find your device (usually /dev/cu.usbmodem* or /dev/tty.usbmodem*)
-ls /dev/cu.usbmodem*
-
-# Run with environment variables
-export INTERFACE_TYPE=serial
-export SERIAL_PORT=/dev/cu.usbmodem14201  # Use your actual device path
-python mqtt-proxy.py
-```
-
-**Option B: Docker Desktop USB Forwarding (Experimental)**
-Docker Desktop for Mac 4.27+ supports USB device forwarding:
-1. Enable in Docker Desktop settings: **Settings → Resources → USB devices**
-2. Select your Meshtastic device
-3. Device appears as `/dev/ttyACM0` in containers
-4. Update `docker-compose.yml` devices section accordingly
-
-## Docker Images & Tag Policy
-
-We maintain multiple tags for the `ghcr.io/ln4cy/mqtt-proxy` image to suit different needs:
-
-| Tag | Description | Recommended For |
-|-----|-------------|-----------------|
-| `:latest` | The most recent stable release (SemVer tagged). | Production / General Use |
-| `:vX.Y.Z` | A specific stable release version. | Version pinning |
-| `:master` | The latest development build from the `master` branch. | Testing new features |
-| `:sha-<hash>` | Build linked to a specific git commit. | CI/CD automation |
-
-> [!TIP]
-> **Production Recommendation**: Most users should pull the `:latest` tag to ensure they have the most recent stable features and security fixes.
-
-## Integration with MeshMonitor
-
-For a seamless integration with [MeshMonitor](https://github.com/Yeraze/meshmonitor), add the proxy as a service in your main `docker-compose.yml`.
-
-> [!IMPORTANT]
-> If you plan to use the MeshMonitor serial bridge or BLE bridge, you **must** use a virtual node enabled configuration for MeshMonitor to ensure proper connectivity.
-
-### Best Practices (Verified)
-
-1. **Shared Network:** Use a custom bridge network (`meshtastic_net`) for all services to enable service-name discovery.
-2. **Startup Order:** Use a healthcheck on `meshmonitor` so `mqtt-proxy` only starts when the virtual node is ready.
-3. **Environment:** Use `TCP_NODE_HOST=meshmonitor` to avoid hardcoded IPs.
-
-### Example Configuration
-
-```yaml
-version: '3'
-services:
-  # The main application
-  meshmonitor:
-    image: ghcr.io/yeraze/meshmonitor:latest
-    container_name: meshmonitor
-    restart: unless-stopped
-    ports:
-      - "8181:3001"
-      - "4404:4404"
-    environment:
-      - ENABLE_VIRTUAL_NODE=true
-      # Optional: Subscribe to another region's traffic
-      - EXTRA_MQTT_ROOTS=msh/US/NC:NC
-      - VIRTUAL_NODE_PORT=4404
-      - MESHTASTIC_NODE_IP=serial-bridge  # Connects to serial-bridge by name
-      - STATUS_FILE=/data/.upgrade-status
-      - CHECK_INTERVAL=5
-      - COMPOSE_PROJECT_DIR=/compose
-      - COMPOSE_PROJECT_NAME=meshmonitor # Critical: Forces upgrader to use shared network
-    command: /data/scripts/upgrade-watchdog.sh
-    # Add simple healthcheck to ensure port 4404 is open
-    healthcheck:
-      test: ["CMD-SHELL", "node -e 'const net = require(\"net\"); const client = new net.Socket(); client.connect(4404, \"127.0.0.1\", () => { process.exit(0); }); client.on(\"error\", () => { process.exit(1); });'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    depends_on:
-      - serial-bridge
-    networks:
-      - meshtastic_net
-
-  # The generic serial bridge
-  serial-bridge:
-    image: ghcr.io/yeraze/meshtastic-serial-bridge:latest
-    container_name: meshtastic-serial-bridge
-    devices:
-      - /dev/ttyACM0:/dev/ttyACM0
-    environment:
-      - SERIAL_DEVICE=/dev/ttyACM0
-      - TCP_PORT=4403
-    networks:
-      - meshtastic_net
-
-  # This proxy service (The Glue)
-  mqtt-proxy:
-    image: ghcr.io/ln4cy/mqtt-proxy:latest
-    container_name: mqtt-proxy
-    restart: unless-stopped
-    environment:
-      - INTERFACE_TYPE=tcp
-      - TCP_NODE_HOST=meshmonitor # Connects to meshmonitor by name
-      - TCP_NODE_PORT=4404
-    depends_on:
-      meshmonitor:
-        condition: service_healthy # Wait for port 4404 to be listening
-    networks:
-      - meshtastic_net
-
-networks:
-  meshtastic_net:
-    driver: bridge
-```
-
-## Architecture
-
-The proxy uses a modular architecture with clean separation of concerns:
-
-```
-┌─────────────┐         ┌──────────────┐         ┌─────────────┐
-│  Meshtastic │ ◄─────► │  MQTT Proxy  │ ◄─────► │ MQTT Broker │
-│    Node     │         │              │         │             │
-└─────────────┘         └──────────────┘         └─────────────┘
-   TCP/Serial          mqttClientProxy           MQTT Protocol
-                             │
-                    ┌────────┴────────┐
-                    │                 │
-              MessageQueue      SafeInterfaceMixin
-              (Rate Limiting)   (Crash Prevention)
-```
-
-### Key Components
-
-- **`mqtt-proxy.py`** - Main orchestrator and entry point
-- **`config.py`** - Centralized configuration management
-- **`handlers/mqtt.py`** - MQTT connection and message handling
-- **`handlers/meshtastic.py`** - Meshtastic interface with SafeInterfaceMixin
-- **`handlers/queue.py`** - Message queue for rate limiting and reliability
-- **SafeInterfaceMixin** - Prevents crashes from malformed packets, detects implicit ACKs
-- **MessageQueue** - Thread-safe queue with configurable rate limiting
-
-## How It Works
-
-1. **Node → MQTT**: Proxy receives `mqttClientProxyMessage` from node and publishes to MQTT broker
-2. **MQTT → Node**: Proxy subscribes to MQTT topics and forwards messages to node as `mqttClientProxyMessage`
-3. **Listener Mirror**: Optional listener mode subscribes to `meshtastic.receive`, builds a JSON record for every packet seen by the local node, and publishes it to dedicated MQTT topics for automation, dashboards, and filtering by type or scope.
-4. **Implicit ACK Handling**: The proxy detects when the MQTT broker echoes a message sent by the local node and forwards it back. This fulfills the firmware's requirement for a delivery confirmation, ensuring the node generates a local "Implicit ACK" rather than waiting 45 seconds and timing out (which causes Red X delivery failures in MeshMonitor).
-5. **Transparent Operation**: Node firmware handles encryption, channel mapping, and routing
-
-## Requirements
-
-- Python 3.9+
-- Docker & Docker Compose
-- Meshtastic node with MQTT enabled and `proxy_to_client_enabled: true`
-
-### Python Dependencies
-
-- meshtastic==2.7.7
-- paho-mqtt==2.1.0
-- pubsub==4.0.7
-- protobuf>=3.20.0,<6.0.0
-
-## Troubleshooting
-
-### Connection Issues
-
-**TCP Connection Fails:**
-- Verify node IP and port
-- Check firewall rules
-- Ensure node is running
-
-**Serial Connection Fails:**
-- Check device path (`ls /dev/tty*`)
-- Verify device permissions
-- Ensure privileged mode is enabled
-
-### MQTT Issues
-
-**No MQTT Traffic:**
-- Verify MQTT is enabled on node: `meshtastic --get mqtt`
-- Check `proxy_to_client_enabled: true`
-- Verify MQTT broker is accessible
-
-**Messages Not Appearing:**
-- Check MQTT broker logs
-- Verify channel configuration
-- Review proxy logs for errors
+The proxy reads these settings directly from the connected node.
 
 ## Development
 
-### Local Development
+Install test dependencies:
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Run locally
-python mqtt-proxy.py
+.venv\Scripts\python.exe -m pip install -r requirements-test.txt
 ```
 
-### Building Docker Image
+Run tests:
 
 ```bash
-docker compose build
+.venv\Scripts\python.exe -m pytest tests/
 ```
 
-## Releasing New Versions
+## Releases
 
-Because this repository enforces **Pull Request requirements** for the `master` branch, follow this workflow to release a new version:
+Releases in this fork are source-focused. Tag a commit, push the tag, and create or update a GitHub release for that tag.
 
-1. **Create a Release Branch:**
-   ```bash
-   git checkout -b release/v1.6.4
-   ```
+Examples:
 
-2. **Run the Release Script:**
-   Use the provided automation script to bump the version in `version.py` and `README.md`:
-   ```bash
-   python scripts/release.py 1.6.4
-   ```
-   *This will create a local "chore: release v1.6.4" commit and a local `v1.6.4` tag.*
-
-3. **Push and Open a PR:**
-   Push the branch and open a Pull Request to `master`.
-   ```bash
-   git push origin release/v1.6.4
-   ```
-
-4. **Merge and Tag:**
-   Once the PR is merged into `master`, push the local tag to GitHub to trigger the release pipeline:
-   ```bash
-   git checkout master
-   git pull
-   git push origin v1.6.4
-   ```
-
-The GitHub Actions will automatically detect the new tag, build the Windows executable, and publish the Docker images.
-
-## Contributing
-
-Contributions welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+```bash
+git tag -a alpha-0.1 -m "Alpha 0.1"
+git push origin alpha-0.1
+```
 
 ## License
 
-This project's source code is released under the **MIT License**. See the [LICENSE](LICENSE) file for details.
-
-### Dependency Licenses & Distribution
-
-while the source code of this proxy is MIT licensed, it depends on third-party libraries that use different licenses:
-
-*   **[meshtastic-python](https://github.com/meshtastic/python)**: Licensed under **GPLv3**.
-*   **[paho-mqtt](https://github.com/eclipse/paho.mqtt.python)**: Licensed under **EPL-2.0 / BSD**.
-
-> [!IMPORTANT]
-> **GPL Compatibility Note:**
-> Because the proxy imports and links with `meshtastic` (GPLv3), any distributed binary or Docker image containing these components is effectively subject to the terms of the **GPLv3**.
->
-> If you are building upon this project and plan to distribute it, ensure you comply with the requirements of the GPLv3 for the combined work.
-
-## Acknowledgments
-
-- Built for the [Meshtastic](https://meshtastic.org/) project
-- Compatible with [MeshMonitor](https://github.com/Yeraze/meshmonitor)
-- Implements the mqttClientProxyMessage protocol from Meshtastic firmware
-
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/LN4CY/mqtt-proxy/issues)
-- **Meshtastic Discord**: [Join](https://discord.gg/meshtastic)
-- **Version**: 1.6.4
-- **Documentation**: [Configuration Guide](CONFIG.md) | [Architecture](ARCHITECTURE.md)
-
-## Roadmap
-
-- [ ] **BLE Interface Support** - Requires custom bleak implementation (see [meshtastic-ble-bridge](https://github.com/Yeraze/meshtastic-ble-bridge) for reference)
-- [ ] Metrics and monitoring endpoints
-- [ ] Web UI for configuration
-- [ ] Multi-node support
-
----
-
-**Status**: Production Ready ✅
-
-
-This application was developed with Antigravity and the help of Gemini
+This project is MIT-licensed at the source level. Because it depends on `meshtastic-python` (GPLv3), distribution of combined builds must still respect GPLv3 obligations.

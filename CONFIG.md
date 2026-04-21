@@ -1,110 +1,76 @@
 # Configuration Guide
 
-Complete configuration reference for the Meshtastic MQTT Proxy.
+Python-first configuration reference for the Meshtastic MQTT Proxy fork.
 
-## Interface Configuration
+## Interface Settings
 
-### TCP Interface
+### TCP
 
-Connect to a Meshtastic node via TCP network connection.
-
-**Use Cases:**
-- MeshMonitor virtual node
-- Meshtastic devices with network connectivity
-- Remote node access
-
-**Configuration:**
 ```env
 INTERFACE_TYPE=tcp
-TCP_NODE_HOST=192.168.1.100
-TCP_NODE_PORT=4403
+TCP_NODE_HOST=127.0.0.1
+TCP_NODE_PORT=4404
 TCP_TIMEOUT=300
 ```
 
-**Parameters:**
-- `TCP_NODE_HOST` - Hostname or IP address of the Meshtastic node
-- `TCP_NODE_PORT` - TCP port (default: 4403, MeshMonitor virtual node: 4404)
-- `TCP_TIMEOUT` - Connection timeout in seconds (default: 300)
+Use this when you connect through a virtual node or another Meshtastic TCP endpoint.
 
-### Serial Interface
+### Serial
 
-Connect to a USB-connected Meshtastic device.
-
-**Use Cases:**
-- Direct USB connection to Meshtastic device
-- Raspberry Pi with USB radio
-- Development and testing
-
-**Configuration:**
 ```env
 INTERFACE_TYPE=serial
-SERIAL_PORT=/dev/ttyACM0
+SERIAL_PORT=COM7
 ```
 
-**Parameters:**
-- `SERIAL_PORT` - Device path (Linux: `/dev/ttyACM0`, `/dev/ttyUSB0`)
+Use this for direct USB access to a Meshtastic device.
 
-**Finding Your Serial Port:**
-```bash
-# List all serial devices
-ls /dev/tty*
-
-# Or use dmesg to see recent connections
-dmesg | grep tty
-```
-
-**Docker Requirements:**
-- Device must be mapped in docker-compose.yml
-- Privileged mode required (already configured)
-
-### BLE Interface
-
-**Status:** Not yet supported (code present but commented out)
-
-BLE support requires custom implementation using the `bleak` library. See the [meshtastic-ble-bridge](https://github.com/Yeraze/meshtastic-ble-bridge) project for reference.
-
-## Environment Variables
-
-### Core Settings
+## Core Variables
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `INTERFACE_TYPE` | string | `tcp` | Interface type: `tcp` or `serial` |
-| `LOG_LEVEL` | string | `INFO` | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-
-### TCP Settings
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `TCP_NODE_HOST` | string | `localhost` | TCP hostname or IP address |
-| `TCP_NODE_PORT` | integer | `4403` | TCP port number |
-| `TCP_TIMEOUT` | integer | `300` | Connection timeout (seconds) |
-
-### Serial Settings
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
+| `INTERFACE_TYPE` | string | `tcp` | `tcp` or `serial` |
+| `LOG_LEVEL` | string | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `TCP_NODE_HOST` | string | `localhost` | TCP node host |
+| `TCP_NODE_PORT` | integer | `4403` | TCP node port |
+| `TCP_TIMEOUT` | integer | `300` | TCP timeout in seconds |
 | `SERIAL_PORT` | string | `/dev/ttyUSB0` | Serial device path |
+| `CONFIG_WAIT_TIMEOUT` | integer | `60` | Wait time for node config |
+| `POLL_INTERVAL` | integer | `1` | Poll interval while waiting for config |
 
-### Advanced Settings
+## Listener Mirror
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `CONFIG_WAIT_TIMEOUT` | integer | `60` | Max time to wait for node config (seconds) |
-| `POLL_INTERVAL` | integer | `1` | Config polling interval (seconds) |
-| `EXTRA_MQTT_ROOTS` | string | `""` | Comma-separated list of roots with optional prefixes for Virtual Channels (e.g. `msh/US/OH:OH, msh/US/CA:CA`) |
-| `MESH_ALLOW_UNCONFIGURED_CHANNELS` | boolean | `true` | Forward MQTT messages to the radio even if their channel is not explicitly configured on the physical node (Virtual Channel Passthrough). Set to `false` for strict filtering. |
-| `MQTT_LISTENER_ENABLED` | boolean | `false` | Mirror packets received by the local node to dedicated JSON MQTT topics |
-| `MQTT_LISTENER_PORTS` | string | `""` | Optional comma-separated allowlist of `decoded.portnum` values such as `TEXT_MESSAGE_APP,POSITION_APP` |
-| `MQTT_LISTENER_DM_ONLY` | boolean | `false` | Only mirror direct messages sent to the local node |
-| `MQTT_LISTENER_GROUP_ONLY` | boolean | `false` | Only mirror broadcast/group traffic |
+| `MQTT_LISTENER_ENABLED` | boolean | `false` | Enable JSON mirroring of received packets |
+| `MQTT_LISTENER_PORTS` | string | `""` | Optional comma-separated `decoded.portnum` allowlist |
+| `MQTT_LISTENER_DM_ONLY` | boolean | `false` | Only mirror direct messages |
+| `MQTT_LISTENER_GROUP_ONLY` | boolean | `false` | Only mirror broadcast/group messages |
 | `MQTT_LISTENER_TEXT_ONLY` | boolean | `false` | Only mirror text-like messages |
 
-The listener is additive. The original bidirectional `mqttClientProxyMessage` path remains active, so MQTT-originated traffic can still be forwarded to the radio.
+Example:
 
-### Plaintext MQTT Command Topics
+```env
+MQTT_LISTENER_ENABLED=true
+MQTT_LISTENER_PORTS=TEXT_MESSAGE_APP,POSITION_APP,TELEMETRY_APP
+MQTT_LISTENER_DM_ONLY=false
+MQTT_LISTENER_GROUP_ONLY=false
+MQTT_LISTENER_TEXT_ONLY=false
+```
 
-The proxy also subscribes to simple plaintext command topics below the current MQTT root:
+Published topics:
+
+```text
+<root>/proxy/rx/!<gateway>/all
+<root>/proxy/rx/!<gateway>/port/<PORTNUM>
+<root>/proxy/rx/!<gateway>/scope/dm
+<root>/proxy/rx/!<gateway>/scope/group
+```
+
+The listener is additive. The original bidirectional `mqttClientProxyMessage` path remains active.
+
+## Plaintext MQTT Command Topics
+
+The proxy subscribes to simple plaintext command topics below the current MQTT root:
 
 ```text
 <root>/proxy/send/group/<channelIndex>
@@ -118,371 +84,83 @@ msh/EU_868/proxy/send/group/0
 msh/EU_868/proxy/send/direct/!13c2288b
 ```
 
-The payload can be either plain UTF-8 text or a small JSON envelope:
+Payload options:
+
+Plain text:
+
+```text
+Hallo Gruppe 0
+```
+
+JSON:
 
 ```json
 {"text":"Hallo","channel":0,"want_ack":true,"hop_limit":3}
 ```
 
-For group topics the channel number from the topic is authoritative. For direct topics the optional `channel` field can be used to choose a channel, otherwise channel `0` is used.
+Rules:
 
+- Group topics use the channel index from the topic.
+- Direct topics default to channel `0`.
+- JSON can override `channel`, `want_ack`, and `hop_limit`.
 
-### Health Check Settings
- 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `HEALTH_CHECK_ACTIVITY_TIMEOUT` | integer | `300` | **Silence Threshold**: Time without Radio activity before probing starts (seconds). Recommended `60`. |
-| `HEALTH_CHECK_STATUS_INTERVAL` | integer | `60` | How often to log status information (seconds) |
-| `MQTT_RECONNECT_DELAY` | integer | `5` | Delay before attempting MQTT reconnection (seconds) |
-
-### Message Queue Settings
+## Queue and Forwarding
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `MESH_TRANSMIT_DELAY` | float | `0.5` | **Rate Limiting**: Delay between outgoing packets (seconds). Prevents radio congestion. |
-| `MESH_MAX_QUEUE_SIZE` | integer | `5000` | Maximum number of outgoing messages buffered in RAM. A large queue handles sudden bursts without dropping messages. When full, the proxy uses a **drop-oldest** eviction strategy to ensure the newest messages reach the radio. Memory impact is negligible (~2.5MB per 10,000 messages). |
- 
-> [!IMPORTANT]
-> **New "Probe & Kill" Logic:**
-> 1. **Silence Watchdog**: If no data is received from the Radio for `HEALTH_CHECK_ACTIVITY_TIMEOUT` (default 300s, recommended 60s):
->    - The proxy enters **Probe Mode** and sends a `sendPosition` command.
->    - If no response is received within **30 seconds** of the probe, the proxy will **exit immediately** (`sys.exit(1)`), triggering a Docker restart.
->
-> 2. **Connection Lost Watchdog**:
->    - If the Meshtastic library reports a "Connection Lost" event (e.g., DNS resolution failure `[Errno -2]`), the proxy starts a 60-second timer.
->    - If the connection is not re-established within that 60 seconds, the proxy will **exit immediately** to force a restart.
+| `MESH_TRANSMIT_DELAY` | float | `0.01` | Delay between outgoing radio packets |
+| `MESH_MAX_QUEUE_SIZE` | integer | `5000` | Outgoing queue size |
+| `MESH_ALLOW_UNCONFIGURED_CHANNELS` | boolean | `true` | Allow forwarding unknown channel names to the radio for virtual channel passthrough |
+| `MQTT_FORWARD_RETAINED` | boolean | `false` | Forward retained MQTT packets |
 
-### Extra MQTT Roots (Virtual Channels)
+## Health and Recovery
 
-Monitor encrypted traffic from additional MQTT servers or root topics beyond your primary node configuration **without causing RF crosstalk**.
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `HEALTH_CHECK_ACTIVITY_TIMEOUT` | integer | `300` | Silence threshold before probing |
+| `HEALTH_CHECK_PROBE_INTERVAL` | integer | half of activity timeout | Probe interval |
+| `HEALTH_CHECK_STATUS_INTERVAL` | integer | `60` | Status log cadence |
+| `MQTT_RECONNECT_DELAY` | integer | `5` | Delay before MQTT reconnect |
 
-**Configuration:**
-```env
-# Format: <root>:<alias>, ...
-# The alias becomes the channel prefix in MeshMonitor (e.g. NC-LongFast)
-EXTRA_MQTT_ROOTS=msh/US/NC:NC, msh/US/OH:Ohio
-```
+Behavior:
 
-When configured, the proxy subscribes to `{root}/2/e/#` for each extra root in addition to your node's primary root.
+- If MQTT disconnects repeatedly, the process exits.
+- If the radio goes silent for too long and probing fails, the process exits.
+- If the Meshtastic connection is lost and does not recover, the process exits.
 
-**How Virtual Channels Work:**
+This is meant to work well with manual restarts or an external supervisor.
 
-When a packet arrives from an extra root, the proxy performs a two-part rewrite before injecting it into the radio:
-
-1. **Topic rewrite:** The MQTT topic channel name is prefixed with the alias.
-   - `msh/US/NC/2/e/LongFast/!abc123` → `msh/US/2/e/NC-LongFast/!abc123`
-
-2. **Payload mutation (crosstalk prevention):** The proxy mutates the `packet.channel` field inside the `ServiceEnvelope` protobuf.
-   - `packet.channel` integer (PSK hash) → a synthetic hash derived from the virtual channel name
-
-   The radio firmware uses this PSK hash to look up its decryption key. Since no local channel has the synthetic hash configured, the radio **cannot decrypt the packet and will not rebroadcast it over RF** — completely preventing cross-region crosstalk.
-
-**MeshMonitor Channel Database Setup:**
-
-Because the proxy preserves the original `channel_id` string and leaves the encrypted payload bytes untouched, MeshMonitor natively receives the exact original packet data.
-
-You just need to ensure the original channel name and PSK exist in your MeshMonitor Channel Database. You do **not** need to create special `NC-` prefixed names.
-
-> [!CAUTION]
-> **Known Limitation (Shared Keys):** If you use the same key for multiple channels (e.g., both your local `LongFast` and the virtual `LongFast` use `AQ==`), **MeshMonitor will decode traffic for both into the exact same channel display**. 
-> 
-> You cannot turn on "Enforce Channel Name Validation" in MeshMonitor to separate them. Because the proxy must fake the PSK hash to prevent the physical radio from transmitting the packet, MeshMonitor's strict "Enforce Name" validation will fail the hash check and refuse to decrypt entirely.
-> 
-> As a result, virtual channel traffic will simply be merged into your existing local channel display if they share a key.
-> **Monitoring only:** Virtual Channels are strictly read-only. Because the hardware radio does not know about virtual channels, there is no way to send a reply on a virtual channel. This is by design — the feature is intended for safe, passive cross-region monitoring without bridging two networks.
-
-> [!IMPORTANT]
-> **Loop Prevention:** When MeshMonitor echoes a virtual channel packet back to the proxy, the proxy's uplink filter automatically drops it (since the virtual channel is not defined on the physical radio). This prevents an infinite `proxy → MeshMonitor → MQTT → proxy` feedback loop.
-
-
-## Meshtastic Node Configuration
-
-The Meshtastic node must have MQTT properly configured for the proxy to work.
-
-### Required Settings
-
-Check your node configuration:
-```bash
-meshtastic --get mqtt
-```
-
-**Required values:**
-```
-mqtt.enabled: True
-mqtt.proxy_to_client_enabled: True
-mqtt.address: <your-mqtt-broker>
-mqtt.username: <mqtt-username>
-mqtt.password: <mqtt-password>
-```
-
-### Enabling MQTT Proxy
-
-If not enabled, configure your node:
-```bash
-meshtastic --set mqtt.enabled true
-meshtastic --set mqtt.proxy_to_client_enabled true
-meshtastic --set mqtt.address mqtt.example.com
-meshtastic --set mqtt.username myuser
-meshtastic --set mqtt.password mypass
-```
-
-> [!CAUTION]
-> **Why `proxy_to_client_enabled` Matters:**
-> When the firmware has `proxy_to_client_enabled` turned on, it fundamentally changes how it confirms message delivery. It stops generating "Implicit ACKs" automatically. Instead, it relies on the MQTT Broker echoing the message back to the Proxy. If the Proxy fails to forward this echo (as was a bug in previous versions), the firmware will hit a `MAX_RETRANSMIT` timeout (approx 45 seconds). In MeshMonitor, this results in a "Red X" (Failed delivery status) for Channel Broadcasts, even if the payload successfully reached the broker!
-
-### Channel Configuration (Uplink/Downlink Filtering)
-
-The proxy automatically respects your node's channel settings for MQTT filtering. You do **not** need to configure these in the proxy itself; it reads them directly from the connected Meshtastic device.
-
-For each configured channel on your node:
-- If `uplink_enabled` is **false**, the proxy will drop messages received from the mesh on that channel instead of sending them to the MQTT broker.
-- If `downlink_enabled` is **false**, the proxy will ignore messages received from the MQTT broker destined for that channel instead of transmitting them to the mesh.
-
-You can configure these settings using the Meshtastic CLI:
-```bash
-meshtastic --ch-index 0 --set uplink_enabled false
-meshtastic --ch-index 0 --set downlink_enabled false
-```
-
-## Docker Compose Configuration
-
-### Basic Setup
-
-```yaml
-services:
-  mqtt-proxy:
-    build: .
-    image: mqtt-proxy
-    container_name: mqtt-proxy
-    restart: unless-stopped
-    environment:
-      - INTERFACE_TYPE=${INTERFACE_TYPE:-tcp}
-      - TCP_NODE_HOST=${TCP_NODE_HOST:-localhost}
-      - TCP_NODE_PORT=${TCP_NODE_PORT:-4403}
-    network_mode: host
-```
-
-### Serial Interface Setup
-
-For serial connections, add device mapping:
-
-```yaml
-services:
-  mqtt-proxy:
-    # ... other config ...
-    devices:
-      - /dev/ttyACM0:/dev/ttyACM0
-    privileged: true
-```
-
-## Example Configurations
-
-### MeshMonitor Virtual Node
+## Extra MQTT Roots
 
 ```env
-INTERFACE_TYPE=tcp
-TCP_NODE_HOST=192.168.1.100
-TCP_NODE_PORT=4404
-LOG_LEVEL=INFO
+EXTRA_MQTT_ROOTS=msh/US/NC:NC,msh/US/OH:Ohio
 ```
 
-### USB-Connected Device
+This subscribes to additional encrypted MQTT roots and rewrites them into virtual channel names for passive monitoring without RF crosstalk.
 
-```env
-INTERFACE_TYPE=serial
-SERIAL_PORT=/dev/ttyACM0
-LOG_LEVEL=INFO
+## Node MQTT Configuration
+
+The connected node should expose MQTT settings like:
+
+```text
+mqtt.enabled: true
+mqtt.proxy_to_client_enabled: true
+mqtt.address: <broker>
+mqtt.username: <user>
+mqtt.password: <password>
 ```
 
-### USB Listener Mirror
+The proxy reads these settings from the node and uses them for the broker connection.
+
+## Example `.env`
 
 ```env
 INTERFACE_TYPE=serial
 SERIAL_PORT=COM7
 LOG_LEVEL=INFO
 MQTT_LISTENER_ENABLED=true
-MQTT_LISTENER_PORTS=TEXT_MESSAGE_APP,POSITION_APP,TELEMETRY_APP
+MQTT_LISTENER_PORTS=
 MQTT_LISTENER_DM_ONLY=false
 MQTT_LISTENER_GROUP_ONLY=false
 MQTT_LISTENER_TEXT_ONLY=false
 ```
-
-### Development/Debug
-
-```env
-INTERFACE_TYPE=tcp
-TCP_NODE_HOST=localhost
-TCP_NODE_PORT=4403
-LOG_LEVEL=DEBUG
-CONFIG_WAIT_TIMEOUT=120
-```
-
-## Logging
-
-### Log Levels
-
-- `DEBUG` - Detailed debugging information (verbose)
-- `INFO` - General informational messages (default)
-- `WARNING` - Warning messages
-- `ERROR` - Error messages only
-
-### Viewing Logs
-
-```bash
-# Follow logs in real-time
-docker compose logs -f mqtt-proxy
-
-# View last 100 lines
-docker compose logs --tail=100 mqtt-proxy
-
-# View logs since 10 minutes ago
-docker compose logs --since=10m mqtt-proxy
-```
-
-### Log Output Examples
-
-**Successful Connection:**
-```
-[INFO] MQTT Proxy starting (interface: TCP)...
-[INFO] Creating TCP interface...
-[INFO] Connected to node !10ae8907
-[INFO] Starting MQTT Client...
-[INFO] MQTT Connected with result code: 0
-```
-
-**MQTT Traffic:**
-```
-[INFO] MQTT RX (Forwarding): Topic=msh/US/2/e/LongFast/!12345678 Size=156 bytes
-[INFO] Node→MQTT: Topic=msh/US/2/e/LongFast/!87654321 Size=142 bytes
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**"No localNode available"**
-- Node not responding
-- Check connection settings
-- Verify node is powered on
-
-**"MQTT is NOT enabled in node config"**
-- Enable MQTT on node: `meshtastic --set mqtt.enabled true`
-- Enable proxy mode: `meshtastic --set mqtt.proxy_to_client_enabled true`
-
-**"Connection timeout"**
-- Increase `TCP_TIMEOUT`
-- Check network connectivity
-- Verify firewall rules
-
-**Serial device not found**
-- Check device path: `ls /dev/tty*`
-- Verify device permissions
-- Ensure device is mapped in docker-compose.yml
-
-### Health Check Issues
-
-**Container keeps restarting**
-- Check logs: `docker compose logs --tail=100 mqtt-proxy`
-- Look for "Health check FAILED" messages
-- Common causes:
-  - MQTT broker is down or unreachable
-  - No message activity for > 5 minutes (configurable via `HEALTH_CHECK_ACTIVITY_TIMEOUT`)
-  - Meshtastic node disconnected
-
-**Monitoring container health**
-```bash
-# Check current health status
-docker inspect --format='{{.State.Health.Status}}' mqtt-proxy
-
-# View health check logs
-docker inspect --format='{{range .State.Health.Log}}{{.Output}}{{end}}' mqtt-proxy
-```
-
-**Understanding health check failures**
-The health check monitors:
-1. MQTT connection state (must be connected)
-2. Message activity (must send or receive within timeout period)
-
-Status logs appear every 60 seconds showing:
-- MQTT connection state
-- Message TX/RX counts and last activity time
-- Warnings when approaching activity timeout
-
-## Performance Tuning
-
-### Timeout Settings
-
-Adjust timeouts based on your network:
-
-```env
-# Slow/unreliable network
-TCP_TIMEOUT=600
-CONFIG_WAIT_TIMEOUT=120
-
-# Fast/reliable network
-TCP_TIMEOUT=60
-CONFIG_WAIT_TIMEOUT=30
-```
-
-### Polling Interval
-
-Adjust config polling frequency:
-
-```env
-# More responsive (higher CPU)
-POLL_INTERVAL=0.5
-
-# Less responsive (lower CPU)
-POLL_INTERVAL=2
-```
-
-## Security Considerations
-
-### Network Security
-
-- Use firewall rules to restrict TCP access
-- Consider VPN for remote connections
-- Use strong MQTT credentials
-
-### Docker Security
-
-- Run with minimal privileges when possible
-- Keep Docker images updated
-- Review docker-compose.yml security settings
-
-## Advanced Topics
-
-### Multiple Proxies
-
-Run multiple proxy instances for different nodes:
-
-```yaml
-services:
-  mqtt-proxy-1:
-    # ... config for node 1 ...
-    
-  mqtt-proxy-2:
-    # ... config for node 2 ...
-```
-
-### Custom Docker Network
-
-Use bridge network instead of host mode:
-
-```yaml
-services:
-  mqtt-proxy:
-    # ... other config ...
-    networks:
-      - mqtt-network
-    ports:
-      - "4403:4403"
-
-networks:
-  mqtt-network:
-    driver: bridge
-```
-
----
-
-For more information, see [README.md](README.md) or open an issue on GitHub.
