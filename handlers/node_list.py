@@ -31,6 +31,8 @@ class NodeListPublisher:
         iface = self.get_interface()
         if not mqtt_handler or not iface:
             return False
+        if not getattr(mqtt_handler, "connected", False):
+            return False
 
         now = current_time if current_time is not None else time.time()
         interval = max(1, int(getattr(self.config, "mqtt_node_list_interval_seconds", 3600)))

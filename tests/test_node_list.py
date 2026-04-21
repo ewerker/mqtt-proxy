@@ -11,6 +11,7 @@ class DummyMqttHandler:
     def __init__(self):
         self.mqtt_root = "msh/EU_868"
         self.prefixed_node_id = "!49b65bc8"
+        self.connected = True
         self.published = []
 
     def publish_json(self, topic, payload, retain=False):
@@ -76,3 +77,18 @@ def test_publish_if_due_respects_interval():
     assert publisher.publish_if_due(force=True, current_time=1000) is True
     assert publisher.publish_if_due(current_time=1200) is False
     assert publisher.publish_if_due(current_time=5000) is True
+
+
+def test_publish_if_due_waits_for_mqtt_connection():
+    cfg = SimpleNamespace(
+        mqtt_node_list_enabled=True,
+        mqtt_node_list_interval_seconds=3600,
+        mqtt_node_list_retain=True,
+    )
+    iface = SimpleNamespace(nodes={})
+    mqtt_handler = DummyMqttHandler()
+    mqtt_handler.connected = False
+    publisher = NodeListPublisher(cfg, lambda: iface, lambda: mqtt_handler)
+
+    assert publisher.publish_if_due(force=True, current_time=1000) is False
+    assert mqtt_handler.published == []
