@@ -170,6 +170,44 @@ def test_ack_tracking_classifies_nak():
     assert 2468 not in proxy.pending_acks
 
 
+def test_ack_response_packet_is_json_safe():
+    proxy = MQTTProxy()
+    proxy.mqtt_handler = DummyMqttHandler()
+    proxy.iface = MagicMock()
+    proxy.iface.localNode.nodeNum = 0x49B65BC8
+    proxy.message_queue = MagicMock()
+    proxy.iface.sendText.return_value = SimpleNamespace(id=1357)
+
+    payload = json.dumps(
+        {
+            "text": "Hallo direkt",
+            "channel": 0,
+            "want_ack": True,
+            "client_ref": "bytes-test-1",
+        }
+    ).encode("utf-8")
+
+    proxy.on_mqtt_message_to_radio(
+        "msh/EU_868/proxy/send/direct/!13c2288b",
+        payload,
+        False,
+    )
+
+    proxy.onAckNak(
+        {
+            "from": 0x13C2288B,
+            "decoded": {
+                "requestId": 1357,
+                "routing": {"errorReason": "NONE"},
+                "payload": b"\x01\x02\x03",
+            },
+        }
+    )
+
+    ack_payload = [item[1] for item in proxy.mqtt_handler.published if item[1]["status"] == "ack"][0]
+    assert ack_payload["response_packet"]["decoded"]["payload"] == "010203"
+
+
 def test_ack_tracking_times_out_after_one_minute():
     proxy = MQTTProxy()
     proxy.mqtt_handler = DummyMqttHandler()

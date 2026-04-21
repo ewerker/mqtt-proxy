@@ -13,7 +13,7 @@ from pubsub import pub
 
 from config import cfg
 from version import __version__
-from handlers.listener import ReceiveMirrorListener
+from handlers.listener import ReceiveMirrorListener, sanitize_value
 from handlers.mqtt import MQTTHandler
 from handlers.node_list import NodeListPublisher
 from handlers.meshtastic import create_interface
@@ -386,7 +386,7 @@ class MQTTProxy:
         if error_reason:
             payload["error_reason"] = error_reason
         if packet is not None:
-            payload["response_packet"] = packet
+            payload["response_packet"] = sanitize_value(packet)
 
         base_topic = f"{self.mqtt_handler.mqtt_root}/proxy/ack"
         if entry.get("client_ref"):
