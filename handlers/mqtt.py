@@ -2,12 +2,15 @@
 # Copyright (c) 2026 LN4CY
 # This software is licensed under the MIT License. See LICENSE file for details.
 
+import json
 import time
 import logging
 import ssl
 import paho.mqtt.client as mqtt
 from meshtastic import mesh_pb2
 from meshtastic.protobuf import mqtt_pb2
+from meshtastic.protobuf import portnums_pb2
+from google.protobuf.json_format import MessageToDict
 
 logger = logging.getLogger("mqtt-proxy.handlers.mqtt")
 
@@ -62,7 +65,8 @@ class MQTTHandler:
             self.client.username_pw_set(mqtt_username, mqtt_password)
             
         # SSL/TLS Configuration
-        use_ssl = getattr(cfg, 'tlsEnabled', False)
+        # Meshtastic protobuf fields may appear in snake_case on current Python builds.
+        use_ssl = getattr(cfg, 'tlsEnabled', getattr(cfg, 'tls_enabled', False))
         if mqtt_address and "mqtt.meshtastic.org" in mqtt_address:
              use_ssl = True
              
@@ -130,6 +134,74 @@ class MQTTHandler:
                 self.tx_failures += 1
                 return False
         return False
+
+    def mirror_radio_packet(self, packet):
+        """Publish a received mesh packet as JSON to a dedicated MQTT mirror topic."""
+        if not self.client or not self.mqtt_root:
+            return False
+
+        portnum = self._packet_portnum(packet)
+        mirror_filter = getattr(self.config, "mqtt_mirror_rx_ports", set())
+        if mirror_filter and portnum.upper() not in mirror_filter:
+            return False
+
+        sender_val = getattr(packet, "from", 0)
+        sender_node_id = f"!{sender_val:08x}" if sender_val else "!unknown"
+        topic = f"{self.mqtt_root}/proxy/rx/{self.prefixed_node_id}/{portnum}/{sender_node_id}"
+
+        payload = {
+            "gateway_id": self.prefixed_node_id,
+            "portnum": portnum,
+            "packet": MessageToDict(packet, preserving_proto_field_name=True),
+            "mirrored_at": int(time.time()),
+        }
+
+        logger.info("📡 Mirror Node->MQTT JSON: Topic=%s Port=%s", topic, portnum)
+        return self.publish(topic, json.dumps(payload, ensure_ascii=False), retain=False)
+
+    def mirror_radio_packet_dict(self, packet):
+        """Publish a received mesh packet dict from meshtastic.receive to MQTT."""
+        if not self.client or not self.mqtt_root:
+            return False
+
+        packet_copy = dict(packet)
+        packet_copy.pop("raw", None)
+
+        decoded = packet_copy.get("decoded") or {}
+        portnum = str(decoded.get("portnum") or "UNKNOWN_APP").upper()
+        mirror_filter = getattr(self.config, "mqtt_mirror_rx_ports", set())
+        if mirror_filter and portnum not in mirror_filter:
+            return False
+
+        sender_node_id = packet_copy.get("fromId")
+        if not sender_node_id:
+            sender_val = packet_copy.get("from", 0)
+            sender_node_id = f"!{int(sender_val):08x}" if sender_val else "!unknown"
+
+        topic = f"{self.mqtt_root}/proxy/rx/{self.prefixed_node_id}/{portnum}/{sender_node_id}"
+        payload = {
+            "gateway_id": self.prefixed_node_id,
+            "portnum": portnum,
+            "packet": packet_copy,
+            "mirrored_at": int(time.time()),
+        }
+
+        logger.info("📡 Mirror Node->MQTT JSON: Topic=%s Port=%s", topic, portnum)
+        return self.publish(topic, json.dumps(payload, ensure_ascii=False), retain=False)
+
+    def _packet_portnum(self, packet):
+        """Return a stable packet type label for mirror topic routing."""
+        try:
+            if packet and packet.decoded:
+                portnum = getattr(packet.decoded, "portnum", None)
+                if portnum is not None:
+                    try:
+                        return portnums_pb2.PortNum.Name(int(portnum))
+                    except Exception:
+                        return str(portnum)
+        except Exception:
+            pass
+        return "UNKNOWN"
 
     def _compute_virtual_channel_hash(self, channel_name):
         """

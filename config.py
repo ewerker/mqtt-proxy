@@ -72,6 +72,16 @@ class Config:
         # MQTT retained message handling
         # By default, skip retained messages to prevent startup floods with historical data
         self.mqtt_forward_retained = os.environ.get("MQTT_FORWARD_RETAINED", "false").lower() == "true"
+
+        # Mirror packets received by the local node to dedicated MQTT JSON topics.
+        # Empty filter means "mirror all packet types".
+        self.mqtt_mirror_rx_enabled = os.environ.get("MQTT_MIRROR_RX_ENABLED", "false").lower() == "true"
+        mirror_ports_raw = os.environ.get("MQTT_MIRROR_RX_PORTS", "")
+        self.mqtt_mirror_rx_ports = {
+            port.strip().upper()
+            for port in mirror_ports_raw.split(",")
+            if port.strip()
+        }
         
         # Extra MQTT root topics for cross-region monitoring
         # Comma-separated list with optional prefixes, e.g. "msh/US/OH:Ohio,msh/US/CA"

@@ -53,6 +53,8 @@ class MQTTProxy:
         self.last_probe_time = 0
         self.last_status_log_time = 0
 
+        pub.subscribe(self.on_radio_packet_received, "meshtastic.receive")
+
     def start(self):
         logger.info("🚀 MQTT Proxy v%s starting (interface: %s)...", __version__, cfg.interface_type.upper())
 
@@ -175,8 +177,9 @@ class MQTTProxy:
 
         logger.warning("⚠️ Meshtastic connection reported LOST!")
         self.connection_lost_time = time.time()
-        
-        # Cleanup will happen in main loop via _cleanup or forced restart in health check
+
+        # Force the main loop to unwind quickly so we can clean up and reconnect.
+        self.iface = None
 
     def on_mqtt_message_to_radio(self, topic, payload, retained):
         """Callback from MQTT Handler to send message to Radio."""
@@ -192,6 +195,19 @@ class MQTTProxy:
         
         # Queue the message instead of sending directly
         self.message_queue.put(topic, payload, retained)
+
+    def on_radio_packet_received(self, packet, interface=None, **kwargs):
+        """Mirror packets seen by the local node to MQTT JSON topics when enabled."""
+        if not getattr(cfg, "mqtt_mirror_rx_enabled", False):
+            return
+
+        if not self.mqtt_handler:
+            return
+
+        try:
+            self.mqtt_handler.mirror_radio_packet_dict(packet)
+        except Exception as e:
+            logger.warning("⚠️ Failed to mirror radio packet to MQTT: %s", e)
 
     def _extract_channel_from_topic(self, topic):
         """

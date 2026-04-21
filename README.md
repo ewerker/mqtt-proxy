@@ -2,6 +2,16 @@
 
 A production-ready MQTT proxy for Meshtastic devices that enables bidirectional message forwarding between Meshtastic nodes and MQTT brokers. Supports TCP and Serial interface connections with a clean factory pattern architecture.
 
+## Purpose / Zweck
+
+**English**
+
+This fork keeps the original MQTT proxy workflow, but also adds a practical USB-first workflow for local Meshtastic monitoring setups. The device is connected directly via Serial/TCP, the MQTT credentials are read from the node configuration, and received mesh traffic can be mirrored to dedicated JSON MQTT topics for downstream tools, dashboards, and custom automation.
+
+**Deutsch**
+
+Dieser Fork bewahrt den urspruenglichen MQTT-Proxy-Ansatz, erweitert ihn aber um einen praxisnahen USB-First-Workflow fuer lokale Meshtastic-Monitoring-Setups. Das Geraet wird direkt per Serial/TCP verbunden, die MQTT-Zugangsdaten werden aus der Node-Konfiguration gelesen, und empfangener Mesh-Verkehr kann auf eigene JSON-MQTT-Topics fuer Folge-Tools, Dashboards und Automatisierungen gespiegelt werden.
+
 **Version**: 1.6.5
 
 ## Features
