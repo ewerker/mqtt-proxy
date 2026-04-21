@@ -168,6 +168,8 @@ ACK lifecycle topics:
 <root>/proxy/ack/<client_ref>
 ```
 
+Without `client_ref`, the proxy does not request or publish an ACK path even if `want_ack=true` is present.
+
 The proxy keeps ACK correlation entries only in memory and expires them after 60 seconds.
 
 ## Queue and Forwarding

@@ -199,6 +199,8 @@ ACK lifecycle events are published to:
 
 - `msh/<region>/proxy/ack/<client_ref>`
 
+Without `client_ref`, the proxy skips the ACK return path entirely even if `want_ack` is set.
+
 The proxy keeps ACK correlations in memory for 60 seconds and then emits a `timeout` status if no ACK arrives in that window.
 
 ## Node Requirements

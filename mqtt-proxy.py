@@ -230,14 +230,19 @@ class MQTTProxy:
             channel_index = command["channel_index"]
             want_ack = command["want_ack"]
             hop_limit = command["hop_limit"]
-            ack_callback = self.onAckNak if want_ack else None
+            client_ref = command.get("client_ref")
+            effective_want_ack = bool(want_ack and client_ref)
+            ack_callback = self.onAckNak if effective_want_ack else None
+
+            if want_ack and not client_ref:
+                logger.info("Skipping ACK path because no client_ref was provided for topic %s", topic)
 
             if command["mode"] == "group":
                 logger.info("📝 Plaintext MQTT command -> group channel %s: %s", channel_index, text)
                 sent_packet = self.iface.sendText(
                     text,
                     destinationId="^all",
-                    wantAck=want_ack,
+                    wantAck=effective_want_ack,
                     onResponse=ack_callback,
                     channelIndex=channel_index,
                     hopLimit=hop_limit,
@@ -248,12 +253,12 @@ class MQTTProxy:
                 sent_packet = self.iface.sendText(
                     text,
                     destinationId=destination_id,
-                    wantAck=want_ack,
+                    wantAck=effective_want_ack,
                     onResponse=ack_callback,
                     channelIndex=channel_index,
                     hopLimit=hop_limit,
                 )
-            if want_ack:
+            if effective_want_ack:
                 self._remember_pending_ack(command, sent_packet)
         except Exception as e:
             logger.error("❌ Failed to send plaintext MQTT command: %s", e)
@@ -339,12 +344,15 @@ class MQTTProxy:
 
     def _remember_pending_ack(self, command, sent_packet):
         """Store outgoing plaintext ACK tracking in memory for one minute."""
+        client_ref = command.get("client_ref")
+        if not client_ref:
+            return
+
         packet_id = getattr(sent_packet, "id", None)
         if packet_id is None:
             logger.warning("âš ï¸ Plaintext command requested ACK but sendText returned no packet id")
             return
 
-        client_ref = command.get("client_ref") or f"pkt-{packet_id}"
         entry = {
             "packet_id": int(packet_id),
             "client_ref": client_ref,

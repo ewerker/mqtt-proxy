@@ -48,6 +48,40 @@ def test_parse_plaintext_command_keeps_client_ref():
     assert command["command_topic"] == "msh/EU_868/proxy/send/direct/!13c2288b"
 
 
+def test_want_ack_without_client_ref_skips_ack_path():
+    proxy = MQTTProxy()
+    proxy.mqtt_handler = DummyMqttHandler()
+    proxy.iface = MagicMock()
+    proxy.iface.localNode.nodeNum = 0x49B65BC8
+    proxy.message_queue = MagicMock()
+    proxy.iface.sendText.return_value = SimpleNamespace(id=9999)
+
+    payload = json.dumps(
+        {
+            "text": "Hallo direkt",
+            "channel": 0,
+            "want_ack": True,
+        }
+    ).encode("utf-8")
+
+    proxy.on_mqtt_message_to_radio(
+        "msh/EU_868/proxy/send/direct/!13c2288b",
+        payload,
+        False,
+    )
+
+    proxy.iface.sendText.assert_called_once_with(
+        "Hallo direkt",
+        destinationId="!13c2288b",
+        wantAck=False,
+        onResponse=None,
+        channelIndex=0,
+        hopLimit=None,
+    )
+    assert proxy.pending_acks == {}
+    assert proxy.mqtt_handler.published == []
+
+
 def test_ack_tracking_publishes_sent_and_ack():
     proxy = MQTTProxy()
     proxy.mqtt_handler = DummyMqttHandler()
