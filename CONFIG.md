@@ -68,6 +68,23 @@ Published topics:
 
 The listener is additive. The original bidirectional `mqttClientProxyMessage` path remains active.
 
+## Periodic Node List Export
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `MQTT_NODE_LIST_ENABLED` | boolean | `true` | Enable periodic node list snapshots |
+| `MQTT_NODE_LIST_INTERVAL_SECONDS` | integer | `3600` | Publish interval in seconds |
+| `MQTT_NODE_LIST_RETAIN` | boolean | `true` | Publish retained MQTT snapshots |
+
+Published topics:
+
+```text
+<root>/proxy/nodes/!<gateway>/all
+<root>/proxy/nodes/!<gateway>/index
+```
+
+`all` contains the full snapshot with raw node records. `index` contains a compact list intended for selector UIs and targeted send workflows.
+
 ## Plaintext MQTT Command Topics
 
 The proxy subscribes to simple plaintext command topics below the current MQTT root:

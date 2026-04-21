@@ -14,6 +14,7 @@ from config import cfg
 from version import __version__
 from handlers.listener import ReceiveMirrorListener
 from handlers.mqtt import MQTTHandler
+from handlers.node_list import NodeListPublisher
 from handlers.meshtastic import create_interface
 from handlers.node_tracker import PacketDeduplicator
 from handlers.queue import MessageQueue
@@ -49,6 +50,7 @@ class MQTTProxy:
         # We pass a lambda to always get the current interface instance
         self.message_queue = MessageQueue(cfg, lambda: self.iface)
         self.listener = ReceiveMirrorListener(cfg, lambda: self.iface, lambda: self.mqtt_handler)
+        self.node_list_publisher = NodeListPublisher(cfg, lambda: self.iface, lambda: self.mqtt_handler)
         
         # State
         self.last_radio_activity = 0
@@ -86,6 +88,7 @@ class MQTTProxy:
                 
                 # Start (or restart) the message queue
                 self.message_queue.start()
+                self.node_list_publisher.publish_if_due(force=True)
                 
                 # Main Loop
                 while self.running and self.iface:
@@ -93,6 +96,7 @@ class MQTTProxy:
                     current_time = time.time()
                     
                     self._log_status(current_time)
+                    self.node_list_publisher.publish_if_due(current_time=current_time)
                     health_ok, reasons = self._perform_health_check(current_time)
                     self._update_heartbeat(current_time, health_ok, reasons)
                     

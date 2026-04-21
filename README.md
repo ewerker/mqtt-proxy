@@ -14,8 +14,6 @@ This fork keeps the original bidirectional `mqttClientProxyMessage` workflow, bu
 
 Dieser Fork behält den ursprünglichen bidirektionalen `mqttClientProxyMessage`-Workflow bei, ergänzt ihn aber um einen praxisnahen USB-First-Ansatz für lokale Meshtastic-Setups. Der Proxy liest die MQTT-Einstellungen aus der Node-Konfiguration, spiegelt empfangenen Mesh-Verkehr auf eigene JSON-MQTT-Topics und akzeptiert einfache Plaintext-MQTT-Befehle für Gruppen- und Direktnachrichten.
 
-**Version**: 1.6.5
-
 ## Features
 
 - Bidirectional MQTT proxying between node and broker
@@ -108,6 +106,25 @@ When the listener is enabled, received packets are mirrored to:
 - `msh/<region>/proxy/rx/!<gateway>/scope/group`
 
 The listener is additive. The original broker-to-node and node-to-broker proxy path remains active.
+
+## Periodic Node List
+
+The proxy also publishes a retained node list snapshot for selector UIs and remote tooling. By default this happens every 3600 seconds and can be changed in `.env`.
+
+Topics:
+
+- `msh/<region>/proxy/nodes/!<gateway>/all`
+- `msh/<region>/proxy/nodes/!<gateway>/index`
+
+The `all` topic contains a full snapshot with raw node data. The `index` topic contains a compact list for UI pickers and quick receiver selection.
+
+Relevant configuration:
+
+```env
+MQTT_NODE_LIST_ENABLED=true
+MQTT_NODE_LIST_INTERVAL_SECONDS=3600
+MQTT_NODE_LIST_RETAIN=true
+```
 
 ## Plaintext MQTT Send Commands
 

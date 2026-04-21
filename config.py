@@ -85,6 +85,11 @@ class Config:
         self.mqtt_listener_dm_only = os.environ.get("MQTT_LISTENER_DM_ONLY", "false").lower() == "true"
         self.mqtt_listener_group_only = os.environ.get("MQTT_LISTENER_GROUP_ONLY", "false").lower() == "true"
         self.mqtt_listener_text_only = os.environ.get("MQTT_LISTENER_TEXT_ONLY", "false").lower() == "true"
+
+        # Periodic node list snapshot publication.
+        self.mqtt_node_list_enabled = os.environ.get("MQTT_NODE_LIST_ENABLED", "true").lower() == "true"
+        self.mqtt_node_list_interval_seconds = int(os.environ.get("MQTT_NODE_LIST_INTERVAL_SECONDS", "3600"))
+        self.mqtt_node_list_retain = os.environ.get("MQTT_NODE_LIST_RETAIN", "true").lower() == "true"
         
         # Extra MQTT root topics for cross-region monitoring
         # Comma-separated list with optional prefixes, e.g. "msh/US/OH:Ohio,msh/US/CA"
