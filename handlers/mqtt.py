@@ -208,6 +208,11 @@ class MQTTHandler:
                 topic_enc = f"{root_topic}/2/e/#"
                 logger.info("📥 Subscribing to Encrypted Wildcard: %s", topic_enc)
                 client.subscribe(topic_enc)
+
+                # Subscribe to simple plaintext commands handled directly by the proxy.
+                topic_send = f"{root_topic}/proxy/send/#"
+                logger.info("📥 Subscribing to Plaintext Commands: %s", topic_send)
+                client.subscribe(topic_send)
                 
                 # Subscribe to extra MQTT root topics
                 subscribed_roots = {root_topic}

@@ -102,6 +102,30 @@ BLE support requires custom implementation using the `bleak` library. See the [m
 
 The listener is additive. The original bidirectional `mqttClientProxyMessage` path remains active, so MQTT-originated traffic can still be forwarded to the radio.
 
+### Plaintext MQTT Command Topics
+
+The proxy also subscribes to simple plaintext command topics below the current MQTT root:
+
+```text
+<root>/proxy/send/group/<channelIndex>
+<root>/proxy/send/direct/!<nodeId>
+```
+
+Examples:
+
+```text
+msh/EU_868/proxy/send/group/0
+msh/EU_868/proxy/send/direct/!13c2288b
+```
+
+The payload can be either plain UTF-8 text or a small JSON envelope:
+
+```json
+{"text":"Hallo","channel":0,"want_ack":true,"hop_limit":3}
+```
+
+For group topics the channel number from the topic is authoritative. For direct topics the optional `channel` field can be used to choose a channel, otherwise channel `0` is used.
+
 
 ### Health Check Settings
  

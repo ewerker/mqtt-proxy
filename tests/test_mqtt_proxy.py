@@ -51,8 +51,9 @@ class TestMQTTHandler:
         # Simulate connect callback
         handler._on_connect(client, None, None, 0)
         
-        # Check subscription
-        client.subscribe.assert_called_with("msh/2/e/#")
+        # Check subscriptions
+        client.subscribe.assert_any_call("msh/2/e/#")
+        client.subscribe.assert_any_call("msh/proxy/send/#")
         
     def test_publish(self):
         """Test publishing logic"""

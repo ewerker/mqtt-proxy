@@ -149,6 +149,30 @@ Published topics:
 - `msh/<region>/proxy/rx/!<gateway>/scope/dm`
 - `msh/<region>/proxy/rx/!<gateway>/scope/group`
 
+### Plaintext Send Commands
+
+In addition to the original encrypted MQTT proxy flow, the fork also supports simple plaintext send commands over MQTT. These commands are handled directly by the proxy and translated into `sendText(...)` calls on the connected node.
+
+Group send by channel number:
+
+```text
+Topic:   msh/<region>/proxy/send/group/<channelIndex>
+Payload: Hallo Gruppe
+```
+
+Direct send to a node:
+
+```text
+Topic:   msh/<region>/proxy/send/direct/!<nodeId>
+Payload: Hallo direkt
+```
+
+Optional JSON payloads are also supported:
+
+```json
+{"text":"Hallo direkt","channel":0,"want_ack":true,"hop_limit":3}
+```
+
 ## Health Monitoring & Recovery
 
 The proxy implements a robust health monitoring system to ensure reliable operation:

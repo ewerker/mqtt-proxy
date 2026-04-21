@@ -7,6 +7,7 @@ import signal
 import sys
 import os
 import argparse
+import json
 from pubsub import pub
 
 from config import cfg
@@ -184,6 +185,9 @@ class MQTTProxy:
 
     def on_mqtt_message_to_radio(self, topic, payload, retained):
         """Callback from MQTT Handler to send message to Radio."""
+        if self._handle_plaintext_command(topic, payload):
+            return
+
         # 1. Extract channel name from topic
         channel_name = self._extract_channel_from_topic(topic)
         
@@ -196,6 +200,121 @@ class MQTTProxy:
         
         # Queue the message instead of sending directly
         self.message_queue.put(topic, payload, retained)
+
+    def _handle_plaintext_command(self, topic, payload):
+        """Handle simple MQTT plaintext send commands for group and direct sends."""
+        command = self._parse_plaintext_command(topic, payload)
+        if not command:
+            return False
+
+        if command["mode"] == "invalid":
+            return True
+
+        if not self.iface:
+            logger.warning("⚠️ Cannot send plaintext command without an active Meshtastic interface")
+            return True
+
+        try:
+            text = command["text"]
+            channel_index = command["channel_index"]
+            want_ack = command["want_ack"]
+            hop_limit = command["hop_limit"]
+
+            if command["mode"] == "group":
+                logger.info("📝 Plaintext MQTT command -> group channel %s: %s", channel_index, text)
+                self.iface.sendText(
+                    text,
+                    destinationId="^all",
+                    wantAck=want_ack,
+                    channelIndex=channel_index,
+                    hopLimit=hop_limit,
+                )
+            else:
+                destination_id = command["destination_id"]
+                logger.info("📝 Plaintext MQTT command -> direct %s on channel %s: %s", destination_id, channel_index, text)
+                self.iface.sendText(
+                    text,
+                    destinationId=destination_id,
+                    wantAck=want_ack,
+                    channelIndex=channel_index,
+                    hopLimit=hop_limit,
+                )
+        except Exception as e:
+            logger.error("❌ Failed to send plaintext MQTT command: %s", e)
+
+        return True
+
+    def _parse_plaintext_command(self, topic, payload):
+        """Parse simple MQTT command topics into send instructions."""
+        root_topic = getattr(self.mqtt_handler, "mqtt_root", None) if self.mqtt_handler else None
+        if not root_topic:
+            return None
+
+        command_prefix = f"{root_topic}/proxy/send/"
+        if not topic.startswith(command_prefix):
+            return None
+
+        topic_suffix = topic[len(command_prefix):]
+        topic_parts = [part for part in topic_suffix.split("/") if part]
+        if len(topic_parts) < 2:
+            logger.warning("⚠️ Ignoring plaintext command with incomplete topic: %s", topic)
+            return {"mode": "invalid", "text": "", "channel_index": 0, "want_ack": False, "hop_limit": None}
+
+        body = self._decode_plaintext_command_payload(payload)
+        if not body["text"]:
+            logger.warning("⚠️ Ignoring plaintext command without text payload: %s", topic)
+            return {"mode": "invalid", "text": "", "channel_index": 0, "want_ack": False, "hop_limit": None}
+
+        mode = topic_parts[0].lower()
+        if mode == "group":
+            try:
+                channel_index = int(topic_parts[1])
+            except ValueError:
+                logger.warning("⚠️ Invalid group channel in plaintext command topic: %s", topic)
+                return {"mode": "invalid", "text": "", "channel_index": 0, "want_ack": False, "hop_limit": None}
+
+            body["mode"] = "group"
+            body["channel_index"] = channel_index
+            return body
+
+        if mode == "direct":
+            destination_id = topic_parts[1]
+            if not destination_id.startswith("!"):
+                logger.warning("⚠️ Direct plaintext command target must start with '!': %s", topic)
+                return {"mode": "invalid", "text": "", "channel_index": 0, "want_ack": False, "hop_limit": None}
+
+            body["mode"] = "direct"
+            body["destination_id"] = destination_id
+            return body
+
+        logger.warning("⚠️ Unsupported plaintext command topic: %s", topic)
+        return {"mode": "invalid", "text": "", "channel_index": 0, "want_ack": False, "hop_limit": None}
+
+    def _decode_plaintext_command_payload(self, payload):
+        """Decode plaintext command payloads from UTF-8 text or small JSON envelopes."""
+        text_payload = payload.decode("utf-8").strip()
+        result = {
+            "text": text_payload,
+            "channel_index": 0,
+            "want_ack": False,
+            "hop_limit": None,
+        }
+
+        if not text_payload:
+            return result
+
+        if text_payload.startswith("{"):
+            try:
+                data = json.loads(text_payload)
+                result["text"] = str(data.get("text") or "").strip()
+                result["channel_index"] = int(data.get("channel", 0) or 0)
+                result["want_ack"] = bool(data.get("want_ack", False))
+                hop_limit = data.get("hop_limit")
+                result["hop_limit"] = int(hop_limit) if hop_limit is not None else None
+            except Exception as e:
+                logger.warning("⚠️ Failed to parse plaintext command JSON payload, falling back to raw text: %s", e)
+
+        return result
 
     def on_radio_packet_received(self, packet, interface=None, **kwargs):
         """Publish received packets through the listener pipeline when enabled."""
