@@ -98,6 +98,7 @@ class ReceiveMirrorListener:
         record = self._build_record(packet)
         base_topic = f"{mqtt_handler.mqtt_root}/proxy/rx/{mqtt_handler.prefixed_node_id}"
         record["gateway_id"] = mqtt_handler.prefixed_node_id
+        retain = bool(getattr(self.config, "mqtt_listener_retain", True))
 
         if getattr(self.config, "verbose", False):
             logger.info(
@@ -111,13 +112,13 @@ class ReceiveMirrorListener:
 
         scope = record["scope"]
         if getattr(self.config, "mqtt_listener_publish_all", True):
-            mqtt_handler.publish_json(f"{base_topic}/all", record)
+            mqtt_handler.publish_json(f"{base_topic}/all", record, retain=retain)
 
         if getattr(self.config, "mqtt_listener_publish_port", True):
-            mqtt_handler.publish_json(f"{base_topic}/port/{record['portnum']}", record)
+            mqtt_handler.publish_json(f"{base_topic}/port/{record['portnum']}", record, retain=retain)
 
         if getattr(self.config, "mqtt_listener_publish_scope", True):
-            mqtt_handler.publish_json(f"{base_topic}/scope/{scope}", record)
+            mqtt_handler.publish_json(f"{base_topic}/scope/{scope}", record, retain=retain)
 
     def _matches_filters(self, packet: Dict[str, Any]) -> bool:
         decoded = packet.get("decoded") or {}

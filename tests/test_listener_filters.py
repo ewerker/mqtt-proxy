@@ -40,6 +40,7 @@ def make_config(**overrides):
         "mqtt_listener_dm_only": False,
         "mqtt_listener_group_only": False,
         "mqtt_listener_text_only": False,
+        "mqtt_listener_retain": True,
         "mqtt_listener_include_raw": True,
         "mqtt_listener_publish_all": True,
         "mqtt_listener_publish_port": True,
@@ -96,3 +97,13 @@ def test_listener_publish_switches_can_disable_duplicates():
 
     assert len(mqtt_handler.published) == 1
     assert mqtt_handler.published[0][0] == "msh/EU_868/proxy/rx/!49b65bc8/scope/group"
+
+
+def test_listener_sets_retain_flag_by_config():
+    cfg = make_config(mqtt_listener_retain=True)
+    mqtt_handler = DummyMqttHandler()
+    listener = ReceiveMirrorListener(cfg, lambda: None, lambda: mqtt_handler)
+
+    listener.handle_receive(make_packet())
+
+    assert all(retain is True for _, _, retain in mqtt_handler.published)

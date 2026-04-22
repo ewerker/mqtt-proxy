@@ -109,6 +109,7 @@ def test_ack_tracking_publishes_sent_and_ack():
     sent_statuses = [item for item in proxy.mqtt_handler.published if item[1]["status"] == "sent"]
     assert len(sent_statuses) == 1
     assert sent_statuses[0][0] == "msh/EU_868/proxy/ack/ack-test-1"
+    assert sent_statuses[0][2] is True
 
     proxy.onAckNak(
         {
@@ -123,7 +124,39 @@ def test_ack_tracking_publishes_sent_and_ack():
     ack_statuses = [item for item in proxy.mqtt_handler.published if item[1]["status"] == "ack"]
     assert len(ack_statuses) == 1
     assert ack_statuses[0][0] == "msh/EU_868/proxy/ack/ack-test-1"
+    assert ack_statuses[0][2] is True
     assert 4321 not in proxy.pending_acks
+
+
+def test_ack_retain_can_be_disabled():
+    old_value = MQTT_PROXY_MODULE.cfg.mqtt_ack_retain
+    MQTT_PROXY_MODULE.cfg.mqtt_ack_retain = False
+    try:
+        proxy = MQTTProxy()
+        proxy.mqtt_handler = DummyMqttHandler()
+        proxy.iface = MagicMock()
+        proxy.iface.localNode.nodeNum = 0x49B65BC8
+        proxy.message_queue = MagicMock()
+        proxy.iface.sendText.return_value = SimpleNamespace(id=8765)
+
+        payload = json.dumps(
+            {
+                "text": "Hallo direkt",
+                "channel": 0,
+                "want_ack": True,
+                "client_ref": "ack-retain-off-1",
+            }
+        ).encode("utf-8")
+
+        proxy.on_mqtt_message_to_radio(
+            "msh/EU_868/proxy/send/direct/!13c2288b",
+            payload,
+            False,
+        )
+
+        assert proxy.mqtt_handler.published[0][2] is False
+    finally:
+        MQTT_PROXY_MODULE.cfg.mqtt_ack_retain = old_value
 
 
 def test_ack_tracking_classifies_implicit_ack_like_mass_com():

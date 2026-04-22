@@ -102,10 +102,12 @@ class Config:
         self.mqtt_listener_dm_only = os.environ.get("MQTT_LISTENER_DM_ONLY", "false").lower() == "true"
         self.mqtt_listener_group_only = os.environ.get("MQTT_LISTENER_GROUP_ONLY", "false").lower() == "true"
         self.mqtt_listener_text_only = os.environ.get("MQTT_LISTENER_TEXT_ONLY", "false").lower() == "true"
+        self.mqtt_listener_retain = os.environ.get("MQTT_LISTENER_RETAIN", "true").lower() == "true"
         self.mqtt_listener_include_raw = os.environ.get("MQTT_LISTENER_INCLUDE_RAW", "true").lower() == "true"
         self.mqtt_listener_publish_all = os.environ.get("MQTT_LISTENER_PUBLISH_ALL", "true").lower() == "true"
         self.mqtt_listener_publish_port = os.environ.get("MQTT_LISTENER_PUBLISH_PORT", "true").lower() == "true"
         self.mqtt_listener_publish_scope = os.environ.get("MQTT_LISTENER_PUBLISH_SCOPE", "true").lower() == "true"
+        self.mqtt_ack_retain = os.environ.get("MQTT_ACK_RETAIN", "true").lower() == "true"
 
         # Periodic node list snapshot publication.
         self.mqtt_node_list_enabled = os.environ.get("MQTT_NODE_LIST_ENABLED", "true").lower() == "true"

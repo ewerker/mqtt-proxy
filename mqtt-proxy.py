@@ -434,7 +434,8 @@ class MQTTProxy:
 
         base_topic = f"{self.mqtt_handler.mqtt_root}/proxy/ack"
         if entry.get("client_ref"):
-            self.mqtt_handler.publish_json(f"{base_topic}/{entry['client_ref']}", payload)
+            retain = bool(getattr(cfg, "mqtt_ack_retain", True))
+            self.mqtt_handler.publish_json(f"{base_topic}/{entry['client_ref']}", payload, retain=retain)
 
     def _resolve_pending_ack(self, packet_id, status, packet=None, source=None, error_reason=None):
         """Resolve a tracked ACK/NAK/timeout by packet id."""

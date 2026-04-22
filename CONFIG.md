@@ -77,10 +77,12 @@ ENV_HOT_RELOAD_INTERVAL_SECONDS=2
 | `MQTT_LISTENER_DM_ONLY` | boolean | `false` | Only mirror direct messages |
 | `MQTT_LISTENER_GROUP_ONLY` | boolean | `false` | Only mirror broadcast/group messages |
 | `MQTT_LISTENER_TEXT_ONLY` | boolean | `false` | Only mirror text-like messages |
+| `MQTT_LISTENER_RETAIN` | boolean | `true` | Publish mirrored listener messages with the MQTT retained flag |
 | `MQTT_LISTENER_INCLUDE_RAW` | boolean | `true` | Include the full packet object in mirrored JSON |
 | `MQTT_LISTENER_PUBLISH_ALL` | boolean | `true` | Publish to `<root>/proxy/rx/!<gateway>/all` |
 | `MQTT_LISTENER_PUBLISH_PORT` | boolean | `true` | Publish to `<root>/proxy/rx/!<gateway>/port/<PORTNUM>` |
 | `MQTT_LISTENER_PUBLISH_SCOPE` | boolean | `true` | Publish to `<root>/proxy/rx/!<gateway>/scope/<dm|group>` |
+| `MQTT_ACK_RETAIN` | boolean | `true` | Publish ACK lifecycle messages on `<root>/proxy/ack/<client_ref>` with retained flag |
 
 Example:
 
@@ -91,10 +93,12 @@ MQTT_LISTENER_EXCLUDE_PORTS=ROUTING_APP,ADMIN_APP
 MQTT_LISTENER_DM_ONLY=false
 MQTT_LISTENER_GROUP_ONLY=false
 MQTT_LISTENER_TEXT_ONLY=false
+MQTT_LISTENER_RETAIN=true
 MQTT_LISTENER_INCLUDE_RAW=false
 MQTT_LISTENER_PUBLISH_ALL=true
 MQTT_LISTENER_PUBLISH_PORT=true
 MQTT_LISTENER_PUBLISH_SCOPE=true
+MQTT_ACK_RETAIN=true
 ```
 
 Published topics:
@@ -193,6 +197,12 @@ ACK lifecycle topics:
 
 ```text
 <root>/proxy/ack/<client_ref>
+```
+
+ACK retain setting:
+
+```env
+MQTT_ACK_RETAIN=true
 ```
 
 Without `client_ref`, the proxy does not request or publish an ACK path even if `want_ack=true` is present.

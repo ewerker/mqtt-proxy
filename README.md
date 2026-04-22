@@ -20,6 +20,8 @@ Dieser Fork behält den ursprünglichen bidirektionalen `mqttClientProxyMessage`
 - TCP and Serial support
 - Listener-based JSON mirroring via `meshtastic.receive`
 - Configurable listener target topics to avoid duplicate MQTT storage
+- Listener messages can be published retained by config and are retained by default
+- ACK lifecycle topics have their own retained-message switch
 - Plaintext MQTT send commands for group and direct messages
 - TLS support based on node MQTT config
 - Channel uplink/downlink filtering based on node settings
@@ -208,6 +210,46 @@ ACK lifecycle events are published to:
 Without `client_ref`, the proxy skips the ACK return path entirely even if `want_ack` is set.
 
 The proxy keeps ACK correlations in memory for 60 seconds and then emits a `timeout` status if no ACK arrives in that window.
+
+## Web Messenger
+
+This proxy can be used together with the separate web-based dashboard project **MeshNode Bridge**:
+
+- GitHub: [ewerker/meshnode-bridge](https://github.com/ewerker/meshnode-bridge)
+- Base44 app: [mesh-link-bridge.base44.app](https://mesh-link-bridge.base44.app/about)
+
+MeshNode Bridge is a browser-based MQTT bridge for the Meshtastic mesh network. It allows users to send and receive text messages from the browser without connecting a physical Meshtastic device directly to that browser session.
+
+Conceptually the flow is:
+
+```text
+Browser <-> MQTT Broker <-> Gateway Node <-> Mesh Network
+```
+
+The web app is built around the JSON topics provided by this fork. The proxy translates between Meshtastic's native Protobuf MQTT traffic and a browser-friendly JSON format that the dashboard can read and write.
+
+Main web dashboard capabilities:
+
+- Send text messages to channels or directly to specific nodes
+- Poll and display incoming MQTT-backed messages
+- Request and track ACK states in near real time
+- Browse the known node directory with battery, signal, position, and uptime data
+- Configure topic prefix, region, node id, and channel names per user
+
+Quick web app setup:
+
+1. Open the settings view in the web app.
+2. Enter your node id, for example `!49b65bc8`.
+3. Set the region to match the Meshtastic configuration.
+4. Adjust the topic prefix if your broker uses a custom path.
+5. Save and start sending or receiving through the proxy topics.
+
+Requirements for the web dashboard:
+
+- This `ewerker/mqtt-proxy` running locally or on a server
+- At least one Meshtastic node with MQTT uplink enabled as gateway
+- Access to the same MQTT broker used by the gateway node
+- Broker credentials configured by the app administrator
 
 ## Node Requirements
 
