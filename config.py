@@ -5,6 +5,7 @@
 import os
 import logging
 import argparse
+from version import APP_NAME
 
 logger = logging.getLogger("mqtt-proxy.config")
 
@@ -14,7 +15,7 @@ class Config:
     def __init__(self):
         # Parse command line arguments
         # We use parse_known_args to avoid crashing on unknown args (e.g., from pytest)
-        parser = argparse.ArgumentParser(description="Meshtastic MQTT Proxy", add_help=False)
+        parser = argparse.ArgumentParser(description=APP_NAME, add_help=False)
         parser.add_argument("--interface", type=str, help="Interface type: 'tcp' or 'serial'")
         parser.add_argument("--tcp-host", type=str, help="TCP hostname or IP address")
         parser.add_argument("--tcp-port", type=int, help="TCP port number")

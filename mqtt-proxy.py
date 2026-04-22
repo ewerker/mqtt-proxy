@@ -12,7 +12,7 @@ import threading
 from pubsub import pub
 
 from config import cfg
-from version import __version__
+from version import APP_NAME, __version__
 from handlers.listener import ReceiveMirrorListener, sanitize_value
 from handlers.mqtt import MQTTHandler
 from handlers.node_list import NodeListPublisher
@@ -71,7 +71,7 @@ class MQTTProxy:
     def start(self):
         if getattr(cfg, "verbose", False):
             logger.info("Verbose console output enabled.")
-        logger.info("🚀 MQTT Proxy v%s starting (interface: %s)...", __version__, cfg.interface_type.upper())
+        logger.info("🚀 %s %s starting (interface: %s)...", APP_NAME, __version__, cfg.interface_type.upper())
 
         # Subscribe to events
         pub.subscribe(self.on_connection, "meshtastic.connection.established")
@@ -666,8 +666,8 @@ class MQTTProxy:
 if __name__ == "__main__":
     # If the user explicitly asks for help on the main script, show full usage
     # We do a quick check here before the main proxy loops start.
-    parser = argparse.ArgumentParser(description=f"Meshtastic MQTT Proxy v{__version__}")
-    parser.add_argument('--version', action='version', version=f'%(prog)s v{__version__}')
+    parser = argparse.ArgumentParser(description=f"{APP_NAME} {__version__}")
+    parser.add_argument('--version', action='version', version=f"{APP_NAME} {__version__}")
     parser.add_argument("--interface", type=str, help="Interface type: 'tcp' or 'serial' (default: tcp)")
     parser.add_argument("--tcp-host", type=str, help="TCP hostname or IP address (default: localhost)")
     parser.add_argument("--tcp-port", type=int, help="TCP port number (default: 4403)")
