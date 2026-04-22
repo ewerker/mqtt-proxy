@@ -33,6 +33,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger("mqtt-proxy")
+ENV_RELOAD_EXIT_CODE = 75
 
 class MQTTProxy:
     """
@@ -55,6 +56,9 @@ class MQTTProxy:
         self.pending_acks = {}
         self.pending_ack_lock = threading.Lock()
         self.pending_ack_ttl_seconds = 60
+        self.env_file_path = os.path.join(os.getcwd(), ".env")
+        self.env_hot_reload_last_check = 0.0
+        self.env_hot_reload_last_mtime = self._get_env_file_mtime()
         
         # State
         self.last_radio_activity = 0
@@ -101,6 +105,7 @@ class MQTTProxy:
                     time.sleep(1)
                     current_time = time.time()
                     
+                    self._check_env_hot_reload(current_time)
                     self._log_status(current_time)
                     self.node_list_publisher.publish_if_due(current_time=current_time)
                     self._expire_pending_acks(current_time)
@@ -128,6 +133,37 @@ class MQTTProxy:
                 # We don't exit, just warn, as sometimes config takes a while or is partial
             
             time.sleep(cfg.poll_interval)
+
+    def _get_env_file_mtime(self):
+        """Return the current mtime of the local .env file or None when absent."""
+        try:
+            return os.path.getmtime(self.env_file_path)
+        except OSError:
+            return None
+
+    def _check_env_hot_reload(self, current_time):
+        """Restart the process when the local .env file changes on disk."""
+        if not getattr(cfg, "env_hot_reload_enabled", True):
+            return
+
+        interval = max(0.25, float(getattr(cfg, "env_hot_reload_interval_seconds", 2)))
+        if current_time - self.env_hot_reload_last_check < interval:
+            return
+
+        self.env_hot_reload_last_check = current_time
+        current_mtime = self._get_env_file_mtime()
+
+        if self.env_hot_reload_last_mtime is None:
+            self.env_hot_reload_last_mtime = current_mtime
+            return
+
+        if current_mtime is None:
+            logger.info(".env was removed. Restarting process to reload runtime configuration.")
+            raise SystemExit(ENV_RELOAD_EXIT_CODE)
+
+        if current_mtime != self.env_hot_reload_last_mtime:
+            logger.info(".env changed on disk. Restarting process to reload runtime configuration.")
+            raise SystemExit(ENV_RELOAD_EXIT_CODE)
 
     def on_connection(self, interface, **kwargs):
         """Callback when Meshtastic connection is established."""

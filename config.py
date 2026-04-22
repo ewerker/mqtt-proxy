@@ -38,6 +38,10 @@ class Config:
             self.log_level_str = "DEBUG"
         self.log_level = getattr(logging, self.log_level_str, logging.INFO)
 
+        # Local .env hot reload
+        self.env_hot_reload_enabled = os.environ.get("ENV_HOT_RELOAD_ENABLED", "true").lower() == "true"
+        self.env_hot_reload_interval_seconds = float(os.environ.get("ENV_HOT_RELOAD_INTERVAL_SECONDS", "2"))
+
         # Interface configuration
         self.interface_type = get_setting(args.interface, "INTERFACE_TYPE", "tcp").lower()
 

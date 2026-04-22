@@ -4,6 +4,24 @@ setlocal EnableExtensions
 set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%"
 
+call :run_proxy %*
+set "EXITCODE=%ERRORLEVEL%"
+
+if "%EXITCODE%"=="75" (
+    echo .env geaendert - starte Proxy mit neuer Konfiguration neu...
+    goto :restart
+)
+
+exit /b %EXITCODE%
+
+:restart
+call :run_proxy %*
+set "EXITCODE=%ERRORLEVEL%"
+if "%EXITCODE%"=="75" goto :restart
+exit /b %EXITCODE%
+
+:run_proxy
+setlocal EnableExtensions
 if exist ".env" (
     for /f "usebackq tokens=* delims=" %%L in (".env") do call :set_env "%%L"
 )
@@ -15,7 +33,8 @@ if not exist "%PYTHON_EXE%" (
 )
 
 "%PYTHON_EXE%" ".\mqtt-proxy.py" %*
-exit /b %errorlevel%
+set "EXITCODE=%ERRORLEVEL%"
+endlocal & exit /b %EXITCODE%
 
 :set_env
 set "LINE=%~1"

@@ -67,6 +67,8 @@ MQTT_LISTENER_ENABLED=true
 start-mqtt-proxy.cmd
 ```
 
+When `.env` changes on disk, `start-mqtt-proxy.cmd` now restarts the proxy automatically so the new values take effect without manual intervention.
+
 For a more chatty console with detailed receive/send logs, start it with:
 
 ```cmd
@@ -76,6 +78,7 @@ start-mqtt-proxy.cmd --verbose
 ## Windows Start
 
 The preferred Windows entry point is [start-mqtt-proxy.cmd](C:\Users\richt\Documents\Codex\mqtt%20Proxy\mqtt-proxy\start-mqtt-proxy.cmd). It loads `.env` and starts the proxy from `.venv` without requiring PowerShell script execution.
+It also watches for `.env` changes and restarts the Python process automatically when the file changes.
 
 Direct Python start is also possible:
 
@@ -109,6 +112,8 @@ Core variables:
 | `MQTT_LISTENER_INCLUDE_RAW` | `true` | Include full packet payload in mirrored JSON |
 
 See [CONFIG.md](C:\Users\richt\Documents\Codex\mqtt%20Proxy\mqtt-proxy\CONFIG.md) for the full reference.
+
+A copyable bundle example is included at [bundle/.env.example](C:\Users\richt\Documents\Codex\mqtt%20Proxy\mqtt-proxy\bundle\.env.example).
 
 ## Listener Topics
 

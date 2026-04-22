@@ -31,6 +31,8 @@ Use this for direct USB access to a Meshtastic device.
 | `INTERFACE_TYPE` | string | `tcp` | `tcp` or `serial` |
 | `LOG_LEVEL` | string | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `VERBOSE` | boolean | `false` | Verbose console output for RX/TX/MQTT details |
+| `ENV_HOT_RELOAD_ENABLED` | boolean | `true` | Restart the proxy when `.env` changes on disk |
+| `ENV_HOT_RELOAD_INTERVAL_SECONDS` | float | `2` | Poll interval for checking `.env` changes |
 | `TCP_NODE_HOST` | string | `localhost` | TCP node host |
 | `TCP_NODE_PORT` | integer | `4403` | TCP node port |
 | `TCP_TIMEOUT` | integer | `300` | TCP timeout in seconds |
@@ -53,6 +55,17 @@ VERBOSE=true
 ```
 
 The command line also accepts the alias `--verbode`.
+
+## .env Hot Reload
+
+When you start via `start-mqtt-proxy.cmd`, the wrapper restarts the Python process automatically after `.env` changes.
+
+Example:
+
+```env
+ENV_HOT_RELOAD_ENABLED=true
+ENV_HOT_RELOAD_INTERVAL_SECONDS=2
+```
 
 ## Listener Mirror
 
