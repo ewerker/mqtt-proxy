@@ -109,11 +109,15 @@ class ReceiveMirrorListener:
                 (record["text"] or "")[:120],
             )
 
-        mqtt_handler.publish_json(f"{base_topic}/all", record)
-        mqtt_handler.publish_json(f"{base_topic}/port/{record['portnum']}", record)
-
         scope = record["scope"]
-        mqtt_handler.publish_json(f"{base_topic}/scope/{scope}", record)
+        if getattr(self.config, "mqtt_listener_publish_all", True):
+            mqtt_handler.publish_json(f"{base_topic}/all", record)
+
+        if getattr(self.config, "mqtt_listener_publish_port", True):
+            mqtt_handler.publish_json(f"{base_topic}/port/{record['portnum']}", record)
+
+        if getattr(self.config, "mqtt_listener_publish_scope", True):
+            mqtt_handler.publish_json(f"{base_topic}/scope/{scope}", record)
 
     def _matches_filters(self, packet: Dict[str, Any]) -> bool:
         decoded = packet.get("decoded") or {}

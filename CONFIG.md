@@ -78,6 +78,9 @@ ENV_HOT_RELOAD_INTERVAL_SECONDS=2
 | `MQTT_LISTENER_GROUP_ONLY` | boolean | `false` | Only mirror broadcast/group messages |
 | `MQTT_LISTENER_TEXT_ONLY` | boolean | `false` | Only mirror text-like messages |
 | `MQTT_LISTENER_INCLUDE_RAW` | boolean | `true` | Include the full packet object in mirrored JSON |
+| `MQTT_LISTENER_PUBLISH_ALL` | boolean | `true` | Publish to `<root>/proxy/rx/!<gateway>/all` |
+| `MQTT_LISTENER_PUBLISH_PORT` | boolean | `true` | Publish to `<root>/proxy/rx/!<gateway>/port/<PORTNUM>` |
+| `MQTT_LISTENER_PUBLISH_SCOPE` | boolean | `true` | Publish to `<root>/proxy/rx/!<gateway>/scope/<dm|group>` |
 
 Example:
 
@@ -89,6 +92,9 @@ MQTT_LISTENER_DM_ONLY=false
 MQTT_LISTENER_GROUP_ONLY=false
 MQTT_LISTENER_TEXT_ONLY=false
 MQTT_LISTENER_INCLUDE_RAW=false
+MQTT_LISTENER_PUBLISH_ALL=true
+MQTT_LISTENER_PUBLISH_PORT=true
+MQTT_LISTENER_PUBLISH_SCOPE=true
 ```
 
 Published topics:
@@ -101,6 +107,14 @@ Published topics:
 ```
 
 The listener is additive. The original bidirectional `mqttClientProxyMessage` path remains active.
+
+Example to avoid duplicate storage and keep only the group/direct scope topics:
+
+```env
+MQTT_LISTENER_PUBLISH_ALL=false
+MQTT_LISTENER_PUBLISH_PORT=false
+MQTT_LISTENER_PUBLISH_SCOPE=true
+```
 
 Common Meshtastic `portnum` values worth filtering:
 

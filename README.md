@@ -19,6 +19,7 @@ Dieser Fork behält den ursprünglichen bidirektionalen `mqttClientProxyMessage`
 - Bidirectional MQTT proxying between node and broker
 - TCP and Serial support
 - Listener-based JSON mirroring via `meshtastic.receive`
+- Configurable listener target topics to avoid duplicate MQTT storage
 - Plaintext MQTT send commands for group and direct messages
 - TLS support based on node MQTT config
 - Channel uplink/downlink filtering based on node settings
