@@ -251,6 +251,14 @@ Requirements for the web dashboard:
 - Access to the same MQTT broker used by the gateway node
 - Broker credentials configured by the app administrator
 
+## More Browser Tools
+
+If you also want a browser-based mesh viewer, have a look at:
+
+- [ewerker/meshview](https://github.com/ewerker/meshview)
+
+This is a separate project focused on viewing mesh data directly in the browser and complements the send/receive workflow provided by MeshNode Bridge and this MQTT proxy.
+
 ## Node Requirements
 
 The node should have MQTT enabled and configured, for example:
