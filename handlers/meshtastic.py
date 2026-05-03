@@ -4,12 +4,45 @@
 
 import time
 import logging
+import re
 from meshtastic import mesh_pb2
 from meshtastic.tcp_interface import TCPInterface
 from meshtastic.serial_interface import SerialInterface
+from serial.tools import list_ports
 from google.protobuf.message import DecodeError
 
 logger = logging.getLogger("mqtt-proxy.handlers.meshtastic")
+
+AUTO_SERIAL_VALUES = {"", "auto", "detect", "autodetect"}
+MESHTASTIC_USB_KEYWORDS = (
+    "meshtastic",
+    "tracker",
+    "seeed",
+    "sensecap",
+    "tinyusb",
+    "nrf",
+    "rp2040",
+    "esp32",
+)
+EXCLUDED_SERIAL_KEYWORDS = (
+    "bluetooth",
+    "debug-console",
+    "wlan-debug",
+)
+PREFERRED_USB_VIDS = {
+    0x2886,  # Seeed Studio
+    0x239A,  # Adafruit / TinyUSB boards
+    0x2E8A,  # Raspberry Pi RP2040
+    0x10C4,  # Silicon Labs CP210x
+    0x1A86,  # WCH CH34x/CH910x
+}
+PREFERRED_SERIAL_PREFIXES = (
+    "/dev/cu.usbmodem",
+    "/dev/cu.usbserial",
+    "/dev/cu.wchusbserial",
+    "/dev/cu.SLAB_USBtoUART",
+    "COM",
+)
 
 
 class MQTTProxyMixin:
@@ -111,6 +144,71 @@ class RawSerialInterface(MQTTProxyMixin, SerialInterface):
         super().__init__(*args, **kwargs)
 
 
+def resolve_serial_port(configured_port):
+    """Resolve SERIAL_PORT=auto to the most likely Meshtastic USB serial port."""
+    port_value = (configured_port or "").strip()
+    if port_value.lower() not in AUTO_SERIAL_VALUES:
+        return configured_port
+
+    ports = list(list_ports.comports())
+    if not ports:
+        raise ValueError("SERIAL_PORT=auto requested, but no serial ports were found")
+
+    def port_text(port):
+        parts = [
+            getattr(port, "device", ""),
+            getattr(port, "name", ""),
+            getattr(port, "description", ""),
+            getattr(port, "manufacturer", ""),
+            getattr(port, "product", ""),
+            getattr(port, "hwid", ""),
+        ]
+        return " ".join(str(part).lower() for part in parts if part)
+
+    def has_preferred_usb_id(port):
+        vid = getattr(port, "vid", None)
+        if vid in PREFERRED_USB_VIDS:
+            return True
+
+        hwid = str(getattr(port, "hwid", "")).lower()
+        return any(f"vid:pid={vid:04x}:" in hwid for vid in PREFERRED_USB_VIDS)
+
+    def is_excluded_port(port):
+        return any(keyword in port_text(port) for keyword in EXCLUDED_SERIAL_KEYWORDS)
+
+    def is_preferred_port_name(device):
+        device_str = str(device)
+        if re.fullmatch(r"COM\d+", device_str, flags=re.IGNORECASE):
+            return True
+        return any(device_str.startswith(prefix) for prefix in PREFERRED_SERIAL_PREFIXES if prefix != "COM")
+
+    for port in ports:
+        text = port_text(port)
+        if any(keyword in text for keyword in MESHTASTIC_USB_KEYWORDS):
+            logger.info("Auto-detected Meshtastic serial port: %s (%s)", port.device, port.description)
+            return port.device
+
+    for port in ports:
+        if has_preferred_usb_id(port):
+            logger.info("Auto-detected known USB serial port: %s (%s)", port.device, port.description)
+            return port.device
+
+    eligible_ports = [port for port in ports if not is_excluded_port(port)]
+    preferred_named_ports = [port for port in eligible_ports if is_preferred_port_name(port.device)]
+    if len(preferred_named_ports) == 1:
+        port = preferred_named_ports[0]
+        logger.info("Auto-detected USB serial port: %s (%s)", port.device, port.description)
+        return port.device
+
+    if not preferred_named_ports and len(eligible_ports) == 1:
+        port = eligible_ports[0]
+        logger.info("Auto-detected only available serial port: %s (%s)", port.device, port.description)
+        return port.device
+
+    visible_ports = ", ".join(port.device for port in ports)
+    raise ValueError(f"SERIAL_PORT=auto could not identify a Meshtastic USB port. Found: {visible_ports}")
+
+
 def create_interface(config, proxy_instance):
     """Factory function to create the appropriate interface based on config."""
     if config.interface_type == "tcp":
@@ -122,9 +220,10 @@ def create_interface(config, proxy_instance):
             proxy=proxy_instance,
         )
     if config.interface_type == "serial":
-        logger.info("Creating Serial interface (%s)...", config.serial_port)
+        serial_port = resolve_serial_port(config.serial_port)
+        logger.info("Creating Serial interface (%s)...", serial_port)
         return RawSerialInterface(
-            config.serial_port,
+            serial_port,
             proxy=proxy_instance,
         )
     raise ValueError(f"Unknown interface type: {config.interface_type}")

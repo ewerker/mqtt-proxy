@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from handlers.meshtastic import MQTTProxyMixin, RawSerialInterface, create_interface
+from handlers.meshtastic import MQTTProxyMixin, RawSerialInterface, create_interface, resolve_serial_port
 from meshtastic import mesh_pb2
 from google.protobuf.message import DecodeError
 
@@ -110,6 +110,63 @@ def test_create_interface_serial():
     with patch('handlers.meshtastic.RawSerialInterface') as mock_serial:
         create_interface(config, None)
         mock_serial.assert_called_with("COM3", proxy=None)
+
+def test_create_interface_serial_auto_detects_meshtastic_port():
+    config = MagicMock()
+    config.interface_type = "serial"
+    config.serial_port = "auto"
+
+    port = MagicMock()
+    port.device = "/dev/cu.usbmodem101"
+    port.name = "cu.usbmodem101"
+    port.description = "TRACKER L1"
+    port.manufacturer = "Seeed Studio"
+    port.product = "TRACKER L1"
+    port.hwid = "USB VID:PID=2886:1668"
+
+    with patch('handlers.meshtastic.list_ports.comports', return_value=[port]):
+        with patch('handlers.meshtastic.RawSerialInterface') as mock_serial:
+            create_interface(config, None)
+            mock_serial.assert_called_with("/dev/cu.usbmodem101", proxy=None)
+
+def test_resolve_serial_port_auto_reports_visible_ports():
+    port = MagicMock()
+    port.device = "/dev/cu.Bluetooth-Incoming-Port"
+    port.name = "cu.Bluetooth-Incoming-Port"
+    port.description = "n/a"
+    port.manufacturer = ""
+    port.product = ""
+    port.hwid = ""
+
+    with patch('handlers.meshtastic.list_ports.comports', return_value=[port]):
+        with pytest.raises(ValueError, match="/dev/cu.Bluetooth-Incoming-Port"):
+            resolve_serial_port("auto")
+
+def test_resolve_serial_port_auto_detects_windows_com_by_usb_vid():
+    port = MagicMock()
+    port.device = "COM7"
+    port.name = "COM7"
+    port.description = "USB Serial Device"
+    port.manufacturer = "Microsoft"
+    port.product = "USB Serial Device"
+    port.hwid = "USB VID:PID=2886:1668 SER=D342D42CC71FBF89"
+    port.vid = 0x2886
+
+    with patch('handlers.meshtastic.list_ports.comports', return_value=[port]):
+        assert resolve_serial_port("auto") == "COM7"
+
+def test_resolve_serial_port_auto_detects_only_available_port():
+    port = MagicMock()
+    port.device = "COM9"
+    port.name = "COM9"
+    port.description = "USB Serial Device"
+    port.manufacturer = ""
+    port.product = ""
+    port.hwid = ""
+    port.vid = None
+
+    with patch('handlers.meshtastic.list_ports.comports', return_value=[port]):
+        assert resolve_serial_port("auto") == "COM9"
 
 def test_create_interface_invalid():
     config = MagicMock()

@@ -19,10 +19,10 @@ Use this when you connect through a virtual node or another Meshtastic TCP endpo
 
 ```env
 INTERFACE_TYPE=serial
-SERIAL_PORT=COM7
+SERIAL_PORT=auto
 ```
 
-Use this for direct USB access to a Meshtastic device.
+Use this for direct USB access to a Meshtastic device. `SERIAL_PORT=auto` tries to select a Meshtastic/Seeed/TinyUSB USB serial port automatically. On macOS, TinyUSB/CDC devices commonly appear as `/dev/cu.usbmodem*`; on Windows the same auto-detection returns the matching `COMx` port. Explicit values such as `/dev/cu.usbmodem101` or `COM7` also work.
 
 ## Core Variables
 
@@ -36,7 +36,7 @@ Use this for direct USB access to a Meshtastic device.
 | `TCP_NODE_HOST` | string | `localhost` | TCP node host |
 | `TCP_NODE_PORT` | integer | `4403` | TCP node port |
 | `TCP_TIMEOUT` | integer | `300` | TCP timeout in seconds |
-| `SERIAL_PORT` | string | `/dev/ttyUSB0` | Serial device path |
+| `SERIAL_PORT` | string | `/dev/ttyUSB0` | Serial device path, or `auto` for USB auto-detection |
 | `CONFIG_WAIT_TIMEOUT` | integer | `60` | Wait time for node config |
 | `POLL_INTERVAL` | integer | `1` | Poll interval while waiting for config |
 
@@ -261,7 +261,7 @@ The proxy reads these settings from the node and uses them for the broker connec
 
 ```env
 INTERFACE_TYPE=serial
-SERIAL_PORT=COM7
+SERIAL_PORT=auto
 LOG_LEVEL=INFO
 MQTT_LISTENER_ENABLED=true
 MQTT_LISTENER_PORTS=

@@ -1,3 +1,45 @@
+# Release beta-0.4
+
+## English
+
+### Features
+- Added cross-platform `SERIAL_PORT=auto` detection for Meshtastic USB serial devices.
+- Supports macOS TinyUSB/CDC devices such as `/dev/cu.usbmodem*`.
+- Supports Windows `COMx` detection through pyserial device metadata and known USB vendor IDs.
+- Added a macOS/Linux `start-mqtt-proxy.sh` wrapper that loads `.env`, uses `.venv/bin/python`, and supports hot-reload restarts.
+- Added a local USB-first `.env.example` setup for direct serial operation.
+
+### Documentation
+- Reworked `README.md` into a full German/English guide.
+- Documented macOS, Windows, serial auto-detection, explicit serial port pinning, MQTT listener topics, node list topics, plaintext send topics, development, and release flow.
+- Updated `CONFIG.md` and bundle examples for `SERIAL_PORT=auto`.
+
+### Tests
+- Added tests for macOS `/dev/cu.usbmodem*` auto-detection.
+- Added tests for Windows `COMx` auto-detection.
+- Added safeguards so Bluetooth/debug ports are not selected as fallback serial devices.
+
+## Deutsch
+
+### Funktionen
+- Plattformuebergreifende `SERIAL_PORT=auto`-Erkennung fuer Meshtastic-USB-Seriell-Geraete hinzugefuegt.
+- Unterstuetzt macOS-TinyUSB/CDC-Geraete wie `/dev/cu.usbmodem*`.
+- Unterstuetzt Windows-`COMx`-Erkennung ueber pyserial-Geraetedaten und bekannte USB-Vendor-IDs.
+- Neues macOS/Linux-Startskript `start-mqtt-proxy.sh`, das `.env` laedt, `.venv/bin/python` nutzt und Hot-Reload-Neustarts unterstuetzt.
+- Lokales USB-First-Setup in `.env.example` fuer direkten seriellen Betrieb.
+
+### Dokumentation
+- `README.md` als vollstaendigen deutsch/englischen Leitfaden ueberarbeitet.
+- macOS, Windows, serielle Auto-Erkennung, explizite Port-Angabe, MQTT-Listener-Topics, Node-Listen-Topics, Plaintext-Sendebefehle, Entwicklung und Release-Ablauf dokumentiert.
+- `CONFIG.md` und Bundle-Beispiele auf `SERIAL_PORT=auto` aktualisiert.
+
+### Tests
+- Tests fuer macOS-`/dev/cu.usbmodem*`-Auto-Erkennung hinzugefuegt.
+- Tests fuer Windows-`COMx`-Auto-Erkennung hinzugefuegt.
+- Schutz ergaenzt, damit Bluetooth-/Debug-Ports nicht als Fallback-Seriellgeraete gewaehlt werden.
+
+---
+
 # Release v1.6.5
 
 ## ✨ Features & Enhancements
