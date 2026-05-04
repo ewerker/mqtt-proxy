@@ -119,3 +119,4 @@ def test_listener_verbose_logs_rx_text(caplog):
         listener.handle_receive(make_packet())
 
     assert "RX GROUP !13c2288b -> ^all ch=- port=TEXT_MESSAGE_APP packet=123 text=Hallo Test" in caplog.text
+    assert "TX MQTT RXJSON !49b65bc8 -> broker topic=msh/EU_868/proxy/rx/!49b65bc8/all retain=True packet=123 text=Hallo Test" in caplog.text

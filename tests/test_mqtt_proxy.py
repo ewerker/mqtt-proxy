@@ -2,7 +2,9 @@ import os
 import sys
 import time
 import pytest
+import logging
 from unittest.mock import MagicMock, patch, ANY
+import paho.mqtt.client as mqtt
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -53,7 +55,7 @@ class TestMQTTHandler:
         
         # Check subscriptions
         client.subscribe.assert_any_call("msh/2/e/#")
-        client.subscribe.assert_any_call("msh/proxy/send/#")
+        client.subscribe.assert_any_call("msh/proxy/send/!1234abcd/#")
         
     def test_publish(self):
         """Test publishing logic"""
@@ -64,6 +66,51 @@ class TestMQTTHandler:
         
         assert handler.publish("topic", b"payload") == True
         handler.client.publish.assert_called_with("topic", b"payload", retain=False)
+
+    def test_publish_logs_visible_broker_tx_when_verbose(self, caplog):
+        """Verbose mode should show outgoing MQTT broker publishes."""
+        config = Config()
+        config.verbose = True
+        handler = MQTTHandler(config, "1234abcd")
+        handler.client = MagicMock()
+        handler.client.publish.return_value.rc = 0
+
+        with caplog.at_level(logging.INFO):
+            assert handler.publish("msh/EU_868/proxy/rx/!1234abcd/all", b"payload") is True
+
+        assert "TX MQTT !1234abcd -> broker topic=msh/EU_868/proxy/rx/!1234abcd/all retain=False bytes=7 expiry=-" in caplog.text
+
+    @patch('paho.mqtt.client.Client')
+    def test_mqtt_configure_uses_mqttv5_when_publish_expiry_enabled(self, mock_client_cls):
+        config = Config()
+        config.mqtt_publish_expiry_enabled = True
+
+        handler = MQTTHandler(config, "1234abcd")
+
+        node_cfg = MagicMock()
+        node_cfg.enabled = True
+        node_cfg.address = "1.2.3.4"
+        node_cfg.port = 1883
+        node_cfg.root = "msh"
+
+        handler.configure(node_cfg)
+
+        _, kwargs = mock_client_cls.call_args
+        assert kwargs["protocol"] == mqtt.MQTTv5
+
+    def test_publish_sets_message_expiry_properties_when_enabled(self):
+        config = Config()
+        config.mqtt_publish_expiry_enabled = True
+        config.mqtt_publish_expiry_seconds = 86400
+
+        handler = MQTTHandler(config, "1234abcd")
+        handler.client = MagicMock()
+        handler.client.publish.return_value.rc = 0
+
+        assert handler.publish("topic", b"payload", retain=True) is True
+        _, kwargs = handler.client.publish.call_args
+        assert kwargs["retain"] is True
+        assert kwargs["properties"].MessageExpiryInterval == 86400
 
     def test_on_message(self):
         """Test MQTT -> Node message handling"""

@@ -83,6 +83,8 @@ ENV_HOT_RELOAD_INTERVAL_SECONDS=2
 | `MQTT_LISTENER_PUBLISH_PORT` | boolean | `true` | Publish to `<root>/proxy/rx/!<gateway>/port/<PORTNUM>` |
 | `MQTT_LISTENER_PUBLISH_SCOPE` | boolean | `true` | Publish to `<root>/proxy/rx/!<gateway>/scope/<dm|group>` |
 | `MQTT_ACK_RETAIN` | boolean | `true` | Publish ACK lifecycle messages on `<root>/proxy/ack/!<gateway>/<client_ref>` with retained flag |
+| `MQTT_PUBLISH_EXPIRY_ENABLED` | boolean | `false` | Enable MQTT 5 Message Expiry on broker publishes |
+| `MQTT_PUBLISH_EXPIRY_SECONDS` | integer | `86400` | Message expiry time in seconds for broker publishes |
 
 Example:
 
@@ -99,6 +101,8 @@ MQTT_LISTENER_PUBLISH_ALL=true
 MQTT_LISTENER_PUBLISH_PORT=true
 MQTT_LISTENER_PUBLISH_SCOPE=true
 MQTT_ACK_RETAIN=true
+MQTT_PUBLISH_EXPIRY_ENABLED=true
+MQTT_PUBLISH_EXPIRY_SECONDS=86400
 ```
 
 Published topics:
@@ -111,6 +115,8 @@ Published topics:
 ```
 
 The listener is additive. The original bidirectional `mqttClientProxyMessage` path remains active.
+
+If `MQTT_PUBLISH_EXPIRY_ENABLED=true`, the proxy uses MQTT 5 for broker communication and attaches a Message Expiry Interval to its PUBLISH packets. This controls how long queued or retained broker messages persist before the broker deletes them.
 
 Example to avoid duplicate storage and keep only the group/direct scope topics:
 
@@ -204,6 +210,15 @@ ACK retain setting:
 ```env
 MQTT_ACK_RETAIN=true
 ```
+
+MQTT 5 publish expiry:
+
+```env
+MQTT_PUBLISH_EXPIRY_ENABLED=true
+MQTT_PUBLISH_EXPIRY_SECONDS=86400
+```
+
+This is especially useful for retained JSON topics when the last known state should disappear automatically after a day.
 
 Without `client_ref`, the proxy does not request or publish an ACK path even if `want_ack=true` is present.
 

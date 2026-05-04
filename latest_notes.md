@@ -1,31 +1,35 @@
 ## English
 
-### Gateway-Specific Topics
-- Switched plaintext send topics from shared paths to gateway-specific paths.
-- The proxy now subscribes only to `.../proxy/send/!<gateway>/#` for its own local node id.
-- ACK lifecycle topics are now published under `.../proxy/ack/!<gateway>/<client_ref>`.
-- This makes multiple proxy instances on the same broker addressable by topic path.
+### Console Visibility
+- Improved `Node -> MQTT` console visibility so incoming text packets and mirrored broker publishes are shown consistently.
+- Added clear `TX MQTT ... -> broker` lines for broker publishes.
+- Aligned RX text preview logging with the TX style for easier live troubleshooting.
 
-### Documentation
-- Updated `README.md` and `CONFIG.md` to document the new send and ACK topic structure.
-- Added concrete examples for group send, direct send, and ACK retrieval.
+### MQTT 5 Message Expiry
+- Added optional MQTT 5 Message Expiry support for broker publishes.
+- New settings:
+  - `MQTT_PUBLISH_EXPIRY_ENABLED`
+  - `MQTT_PUBLISH_EXPIRY_SECONDS`
+- Example/default usage in local config is `86400` seconds (24 hours).
 
-### Tests
-- Updated plaintext command tests for gateway-specific send topics.
-- Updated ACK flow tests for gateway-specific ACK topics.
+### Documentation and Tests
+- Updated `.env` templates, `README.md`, and `CONFIG.md`.
+- Added coverage for visible broker publish logging and MQTT 5 expiry properties.
 
 ## Deutsch
 
-### Gateway-spezifische Topics
-- Die Plaintext-Sendepfade wurden auf gateway-spezifische Topics umgestellt.
-- Der Proxy abonniert jetzt nur noch `.../proxy/send/!<gateway>/#` fuer seine eigene lokale Node-ID.
-- ACK-Lifecycle-Topics werden jetzt unter `.../proxy/ack/!<gateway>/<client_ref>` veroeffentlicht.
-- Dadurch lassen sich mehrere Proxy-Instanzen auf demselben Broker sauber ueber den Topic-Pfad adressieren.
+### Konsolen-Sichtbarkeit
+- Die Sichtbarkeit fuer `Node -> MQTT` in der Konsole wurde verbessert, damit eingehende Textpakete und gespiegelte Broker-Publishes konsistent sichtbar sind.
+- Klare `TX MQTT ... -> broker`-Zeilen fuer Broker-Publishes wurden hinzugefuegt.
+- Die RX-Textvorschau wurde an den TX-Stil angeglichen, damit Live-Debugging leichter wird.
 
-### Dokumentation
-- `README.md` und `CONFIG.md` wurden auf die neue Send- und ACK-Topic-Struktur aktualisiert.
-- Konkrete Beispiele fuer Gruppensenden, Direktsenden und ACK-Abruf wurden ergaenzt.
+### MQTT-5-Message-Expiry
+- Optionale MQTT-5-Message-Expiry fuer Broker-Publishes wurde hinzugefuegt.
+- Neue Einstellungen:
+  - `MQTT_PUBLISH_EXPIRY_ENABLED`
+  - `MQTT_PUBLISH_EXPIRY_SECONDS`
+- Beispiel-/Standardnutzung in der lokalen Konfiguration ist `86400` Sekunden (24 Stunden).
 
-### Tests
-- Die Plaintext-Command-Tests wurden auf gateway-spezifische Sendetopics angepasst.
-- Die ACK-Flow-Tests wurden auf gateway-spezifische ACK-Topics angepasst.
+### Dokumentation und Tests
+- `.env`-Vorlagen, `README.md` und `CONFIG.md` wurden aktualisiert.
+- Testabdeckung fuer sichtbare Broker-Publish-Logs und MQTT-5-Expiry-Properties wurde hinzugefuegt.

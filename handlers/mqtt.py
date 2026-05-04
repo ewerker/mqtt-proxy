@@ -7,6 +7,8 @@ import time
 import logging
 import ssl
 import paho.mqtt.client as mqtt
+from paho.mqtt.packettypes import PacketTypes
+from paho.mqtt.properties import Properties
 from meshtastic import mesh_pb2
 from meshtastic.protobuf import mqtt_pb2
 
@@ -58,7 +60,13 @@ class MQTTHandler:
         client_id = f"MeshtasticPythonMqttProxy-{self.node_id}"
         logger.info("🆔 Setting MQTT Client ID: %s", client_id)
         
-        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=client_id)
+        client_kwargs = {
+            "callback_api_version": mqtt.CallbackAPIVersion.VERSION2,
+            "client_id": client_id,
+        }
+        if getattr(self.config, "mqtt_publish_expiry_enabled", False):
+            client_kwargs["protocol"] = mqtt.MQTTv5
+        self.client = mqtt.Client(**client_kwargs)
         if mqtt_username and mqtt_password:
             self.client.username_pw_set(mqtt_username, mqtt_password)
             
@@ -122,9 +130,20 @@ class MQTTHandler:
     def publish(self, topic, payload, retain=False):
         """Publish a message to MQTT."""
         if self.client:
-            if getattr(self.config, "verbose", False):
-                logger.info("MQTT publish topic=%s retain=%s size=%d", topic, retain, len(payload))
-            result = self.client.publish(topic, payload, retain=retain)
+            gateway_id = self.prefixed_node_id or "!unknown"
+            properties = self._build_publish_properties()
+            logger.info(
+                "TX MQTT %s -> broker topic=%s retain=%s bytes=%d expiry=%s",
+                gateway_id,
+                topic,
+                retain,
+                len(payload),
+                getattr(properties, "MessageExpiryInterval", "-") if properties else "-",
+            )
+            publish_kwargs = {"retain": retain}
+            if properties is not None:
+                publish_kwargs["properties"] = properties
+            result = self.client.publish(topic, payload, **publish_kwargs)
             if result.rc == mqtt.MQTT_ERR_SUCCESS:
                 self.tx_count += 1
                 self.tx_failures = 0
@@ -138,6 +157,16 @@ class MQTTHandler:
     def publish_json(self, topic, payload, retain=False):
         """Publish a JSON-serializable payload to MQTT."""
         return self.publish(topic, json.dumps(payload, ensure_ascii=False), retain=retain)
+
+    def _build_publish_properties(self):
+        """Build MQTT 5 publish properties when message expiry is enabled."""
+        if not getattr(self.config, "mqtt_publish_expiry_enabled", False):
+            return None
+
+        expiry_seconds = max(0, int(getattr(self.config, "mqtt_publish_expiry_seconds", 86400)))
+        properties = Properties(PacketTypes.PUBLISH)
+        properties.MessageExpiryInterval = expiry_seconds
+        return properties
 
     def _compute_virtual_channel_hash(self, channel_name):
         """

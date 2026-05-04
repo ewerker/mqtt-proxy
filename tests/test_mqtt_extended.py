@@ -70,6 +70,7 @@ def test_mqtt_publish_failure():
     config = MagicMock()
     handler = MQTTHandler(config, "1234abcd")
     handler.client = MagicMock()
+    config.mqtt_publish_expiry_enabled = False
     
     # Simulate failure
     result = MagicMock()

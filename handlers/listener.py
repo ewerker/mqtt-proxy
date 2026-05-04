@@ -109,27 +109,38 @@ class ReceiveMirrorListener:
         retain = bool(getattr(self.config, "mqtt_listener_retain", True))
         scope = record["scope"]
 
-        if getattr(self.config, "verbose", False):
-            scope_label = "DM" if scope == "dm" else "GROUP"
-            logger.info(
-                "RX %s %s -> %s ch=%s port=%s packet=%s text=%s",
-                scope_label,
-                record["from_id"],
-                record["to_id"] or "^all",
-                record["channel"] if record["channel"] is not None else "-",
-                record["portnum"],
-                record["packet_id"] if record["packet_id"] is not None else "-",
-                text_preview(record["text"]),
-            )
+        scope_label = "DM" if scope == "dm" else "GROUP"
+        logger.info(
+            "RX %s %s -> %s ch=%s port=%s packet=%s text=%s",
+            scope_label,
+            record["from_id"],
+            record["to_id"] or "^all",
+            record["channel"] if record["channel"] is not None else "-",
+            record["portnum"],
+            record["packet_id"] if record["packet_id"] is not None else "-",
+            text_preview(record["text"]),
+        )
 
         if getattr(self.config, "mqtt_listener_publish_all", True):
-            mqtt_handler.publish_json(f"{base_topic}/all", record, retain=retain)
+            self._publish_record(mqtt_handler, f"{base_topic}/all", record, retain)
 
         if getattr(self.config, "mqtt_listener_publish_port", True):
-            mqtt_handler.publish_json(f"{base_topic}/port/{record['portnum']}", record, retain=retain)
+            self._publish_record(mqtt_handler, f"{base_topic}/port/{record['portnum']}", record, retain)
 
         if getattr(self.config, "mqtt_listener_publish_scope", True):
-            mqtt_handler.publish_json(f"{base_topic}/scope/{scope}", record, retain=retain)
+            self._publish_record(mqtt_handler, f"{base_topic}/scope/{scope}", record, retain)
+
+    def _publish_record(self, mqtt_handler, topic: str, record: Dict[str, Any], retain: bool) -> None:
+        """Publish a mirrored RX record and optionally log the outgoing MQTT dataset."""
+        logger.info(
+            "TX MQTT RXJSON %s -> broker topic=%s retain=%s packet=%s text=%s",
+            record.get("gateway_id") or "!unknown",
+            topic,
+            retain,
+            record.get("packet_id") if record.get("packet_id") is not None else "-",
+            text_preview(record.get("text")),
+        )
+        mqtt_handler.publish_json(topic, record, retain=retain)
 
     def _matches_filters(self, packet: Dict[str, Any]) -> bool:
         decoded = packet.get("decoded") or {}

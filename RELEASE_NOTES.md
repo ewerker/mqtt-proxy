@@ -1,3 +1,51 @@
+# Release beta-0.7
+
+## English
+
+### Console Visibility
+- Improved `Node -> MQTT` console visibility so incoming text packets and their mirrored broker publishes are shown consistently.
+- Broker publishes now log clear `TX MQTT ... -> broker` lines instead of only node-list-specific output.
+- RX text preview logging was aligned with TX logging for easier live troubleshooting.
+
+### MQTT 5 Message Expiry
+- Added optional MQTT 5 Message Expiry support for broker publishes.
+- New settings:
+  - `MQTT_PUBLISH_EXPIRY_ENABLED`
+  - `MQTT_PUBLISH_EXPIRY_SECONDS`
+- Recommended and example value is `86400` seconds (24 hours).
+- This is especially useful for retained JSON topics that should disappear automatically after a day.
+
+### Documentation
+- Updated `.env` templates, `README.md`, and `CONFIG.md` with the new expiry configuration and log behavior.
+
+### Tests
+- Added coverage for visible broker publish logging.
+- Added coverage for MQTT 5 client selection and publish expiry properties.
+
+## Deutsch
+
+### Konsolen-Sichtbarkeit
+- Die Sichtbarkeit fuer `Node -> MQTT` in der Konsole wurde verbessert, damit eingehende Textpakete und ihre gespiegelten Broker-Publishes konsistent sichtbar sind.
+- Broker-Publishes werden jetzt mit klaren `TX MQTT ... -> broker`-Zeilen geloggt und nicht mehr nur implizit ueber die Node-Liste.
+- Die RX-Textvorschau wurde an den TX-Stil angeglichen, damit Live-Debugging leichter wird.
+
+### MQTT-5-Message-Expiry
+- Optionale MQTT-5-Message-Expiry fuer Broker-Publishes wurde hinzugefuegt.
+- Neue Einstellungen:
+  - `MQTT_PUBLISH_EXPIRY_ENABLED`
+  - `MQTT_PUBLISH_EXPIRY_SECONDS`
+- Empfohlener und beispielhafter Wert ist `86400` Sekunden (24 Stunden).
+- Das ist besonders fuer retained JSON-Topics nuetzlich, die nach einem Tag automatisch verschwinden sollen.
+
+### Dokumentation
+- `.env`-Vorlagen, `README.md` und `CONFIG.md` wurden fuer die neue Expiry-Konfiguration und das Log-Verhalten aktualisiert.
+
+### Tests
+- Testabdeckung fuer sichtbare Broker-Publish-Logs wurde hinzugefuegt.
+- Testabdeckung fuer MQTT-5-Clientwahl und Publish-Expiry-Properties wurde hinzugefuegt.
+
+---
+
 # Release beta-0.6
 
 ## English

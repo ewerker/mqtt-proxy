@@ -1,6 +1,6 @@
 # Meshtastic MQTT Proxy
 
-**Version**: beta-0.6
+**Version**: beta-0.7
 
 ## English
 
@@ -26,6 +26,7 @@ English:
 - Listener-based JSON mirroring via `meshtastic.receive`
 - Configurable listener target topics to avoid duplicate MQTT storage
 - Retained listener messages and retained ACK lifecycle topics
+- Optional MQTT 5 message expiry for broker-published topics
 - Plaintext MQTT send commands for channel and direct messages
 - TLS support based on the node MQTT configuration
 - Channel uplink/downlink filtering based on the node channel settings
@@ -42,6 +43,7 @@ Deutsch:
 - JSON-Spiegelung empfangener Pakete ueber `meshtastic.receive`
 - Konfigurierbare Listener-Zieltopics zur Vermeidung doppelter MQTT-Ablage
 - Retained Listener-Nachrichten und retained ACK-Lifecycle-Topics
+- Optionale MQTT-5-Message-Expiry fuer zum Broker publizierte Topics
 - Plaintext-MQTT-Befehle fuer Gruppen- und Direktnachrichten
 - TLS-Unterstuetzung auf Basis der MQTT-Konfiguration des Nodes
 - Uplink-/Downlink-Filter anhand der Channel-Einstellungen des Nodes
@@ -238,6 +240,8 @@ MQTT_LISTENER_INCLUDE_RAW=false
 MQTT_LISTENER_PUBLISH_ALL=false
 MQTT_LISTENER_PUBLISH_PORT=false
 MQTT_LISTENER_PUBLISH_SCOPE=true
+MQTT_PUBLISH_EXPIRY_ENABLED=true
+MQTT_PUBLISH_EXPIRY_SECONDS=86400
 
 MQTT_NODE_LIST_ENABLED=true
 MQTT_NODE_LIST_INTERVAL_SECONDS=3600
@@ -264,6 +268,8 @@ MQTT_LISTENER_INCLUDE_RAW=false
 MQTT_LISTENER_PUBLISH_ALL=false
 MQTT_LISTENER_PUBLISH_PORT=false
 MQTT_LISTENER_PUBLISH_SCOPE=true
+MQTT_PUBLISH_EXPIRY_ENABLED=true
+MQTT_PUBLISH_EXPIRY_SECONDS=86400
 
 MQTT_NODE_LIST_ENABLED=true
 MQTT_NODE_LIST_INTERVAL_SECONDS=3600
@@ -289,6 +295,8 @@ MQTT_NODE_LIST_RETAIN=true
 | `MQTT_LISTENER_INCLUDE_RAW` | `true` | Include full raw packet JSON | Vollstaendiges Rohpaket einbetten |
 | `MQTT_LISTENER_RETAIN` | `true` | Publish listener topics retained | Listener-Topics retained publishen |
 | `MQTT_ACK_RETAIN` | `true` | Publish ACK lifecycle retained | ACK-Lifecycle retained publishen |
+| `MQTT_PUBLISH_EXPIRY_ENABLED` | `false` | Enable MQTT 5 Message Expiry on broker publishes | MQTT-5-Message-Expiry fuer Broker-Publishes aktivieren |
+| `MQTT_PUBLISH_EXPIRY_SECONDS` | `86400` | Expiry time in seconds for broker-published messages | Ablaufzeit in Sekunden fuer Broker-Publishes |
 | `MQTT_NODE_LIST_ENABLED` | `true` | Publish periodic node list | Periodische Node-Liste publishen |
 | `MQTT_NODE_LIST_INTERVAL_SECONDS` | `3600` | Node list interval | Node-Listen-Intervall |
 | `MQTT_FORWARD_RETAINED` | `false` | Forward retained broker messages | Retained Broker-Nachrichten weiterleiten |
@@ -313,6 +321,8 @@ msh/<region>/proxy/rx/!<gateway>/scope/group
 
 The listener is additive. The original node-to-broker and broker-to-node proxy path remains active.
 
+When `MQTT_PUBLISH_EXPIRY_ENABLED=true`, the proxy switches its broker client to MQTT 5 and attaches a Message Expiry Interval to published topics. This is useful for retained JSON topics that should disappear automatically after a defined time, for example after `86400` seconds (24 hours).
+
 Useful port filters:
 
 ```env
@@ -333,6 +343,8 @@ msh/<region>/proxy/rx/!<gateway>/scope/group
 ```
 
 Der Listener ist additiv. Der urspruengliche Node-zu-Broker- und Broker-zu-Node-Proxy-Pfad bleibt aktiv.
+
+Wenn `MQTT_PUBLISH_EXPIRY_ENABLED=true` gesetzt ist, nutzt der Proxy fuer Broker-Publishes MQTT 5 und haengt eine Message Expiry Interval an. Das ist besonders fuer retained JSON-Topics nuetzlich, die nach einer definierten Zeit automatisch verschwinden sollen, zum Beispiel nach `86400` Sekunden (24 Stunden).
 
 Nuetzliche Port-Filter:
 
@@ -524,30 +536,30 @@ Tests ausfuehren:
 
 English:
 
-This fork currently uses beta tags. The current release is `beta-0.6`.
+This fork currently uses beta tags. The current release is `beta-0.7`.
 
 Typical release flow:
 
 ```bash
-git commit -m "release: beta-0.6"
-git tag beta-0.6
+git commit -m "release: beta-0.7"
+git tag beta-0.7
 git push origin master
-git push origin beta-0.6
-gh release create beta-0.6 --title "beta-0.6" --notes-file latest_notes.md
+git push origin beta-0.7
+gh release create beta-0.7 --title "beta-0.7" --notes-file latest_notes.md
 ```
 
 Deutsch:
 
-Dieser Fork nutzt aktuell Beta-Tags. Das aktuelle Release ist `beta-0.6`.
+Dieser Fork nutzt aktuell Beta-Tags. Das aktuelle Release ist `beta-0.7`.
 
 Typischer Release-Ablauf:
 
 ```bash
-git commit -m "release: beta-0.6"
-git tag beta-0.6
+git commit -m "release: beta-0.7"
+git tag beta-0.7
 git push origin master
-git push origin beta-0.6
-gh release create beta-0.6 --title "beta-0.6" --notes-file latest_notes.md
+git push origin beta-0.7
+gh release create beta-0.7 --title "beta-0.7" --notes-file latest_notes.md
 ```
 
 ## License / Lizenz

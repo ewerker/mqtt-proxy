@@ -83,6 +83,8 @@ class Config:
         # MQTT retained message handling
         # By default, skip retained messages to prevent startup floods with historical data
         self.mqtt_forward_retained = os.environ.get("MQTT_FORWARD_RETAINED", "false").lower() == "true"
+        self.mqtt_publish_expiry_enabled = os.environ.get("MQTT_PUBLISH_EXPIRY_ENABLED", "false").lower() == "true"
+        self.mqtt_publish_expiry_seconds = int(os.environ.get("MQTT_PUBLISH_EXPIRY_SECONDS", "86400"))
 
         # Listener mode mirrors packets received by the local node to dedicated MQTT JSON topics.
         self.mqtt_listener_enabled = os.environ.get("MQTT_LISTENER_ENABLED", "false").lower() == "true"
