@@ -169,7 +169,12 @@ class MessageQueue:
         # Determine size for logging
         size = len(item['payload'])
         if getattr(self.config, 'verbose', False):
-            logger.info("Queue send topic=%s size=%d retained=%s", item['topic'], size, item['retained'])
+            logger.info(
+                "TX QUEUE -> radio topic=%s retained=%s bytes=%d",
+                item['topic'],
+                item['retained'],
+                size,
+            )
 
         # Use _sendToRadio if available (thread-safe with locking), fall back to Impl
         if hasattr(iface, "_sendToRadio"):
@@ -178,4 +183,7 @@ class MessageQueue:
              logger.warning("⚠️ Interface missing _sendToRadio, falling back to _sendToRadioImpl (potentially unsafe)")
              iface._sendToRadioImpl(to_radio)
              
-        logger.debug(f"📤 Sent to radio: {item['topic']} ({size} bytes)")
+        if getattr(self.config, 'verbose', False):
+            logger.info("TX QUEUE sent topic=%s bytes=%d", item['topic'], size)
+        else:
+            logger.debug(f"📤 Sent to radio: {item['topic']} ({size} bytes)")

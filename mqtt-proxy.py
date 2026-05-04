@@ -26,12 +26,91 @@ if sys.stdout and not sys.stdout.isatty():
 if sys.stderr and not sys.stderr.isatty():
     sys.stderr.reconfigure(encoding='utf-8', line_buffering=True)
 
-# Configure logging
-logging.basicConfig(
-    stream=sys.stdout,
-    level=cfg.log_level,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+class ConsoleFormatter(logging.Formatter):
+    """Colorize console output for level and common RX/TX lifecycle messages."""
+
+    RESET = "\033[0m"
+    DIM = "\033[2m"
+    BOLD = "\033[1m"
+
+    LEVEL_COLORS = {
+        logging.DEBUG: "\033[37m",
+        logging.INFO: "\033[36m",
+        logging.WARNING: "\033[33m",
+        logging.ERROR: "\033[31m",
+        logging.CRITICAL: "\033[35m",
+    }
+
+    MESSAGE_COLORS = (
+        ("TX IMPLICIT_ACK", "\033[95m"),
+        ("TX ACK", "\033[92m"),
+        ("TX SENT", "\033[96m"),
+        ("TX NAK", "\033[91m"),
+        ("TX TIMEOUT", "\033[93m"),
+        ("TX QUEUE", "\033[94m"),
+        ("TX MQTT", "\033[94m"),
+        ("TX DM", "\033[94m"),
+        ("TX GROUP", "\033[94m"),
+        ("RX ", "\033[92m"),
+    )
+
+    def __init__(self, use_color):
+        super().__init__("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+        self.use_color = use_color
+
+    def format(self, record):
+        original_levelname = record.levelname
+        original_name = record.name
+        original_message = record.msg
+        original_args = record.args
+
+        if self.use_color:
+            level_color = self.LEVEL_COLORS.get(record.levelno, "")
+            record.levelname = f"{self.BOLD}{level_color}{original_levelname}{self.RESET}"
+            record.name = f"{self.DIM}{original_name}{self.RESET}"
+            message_text = record.getMessage()
+            record.msg = self._colorize_message(message_text, record.levelno)
+            record.args = ()
+
+        try:
+            return super().format(record)
+        finally:
+            record.levelname = original_levelname
+            record.name = original_name
+            record.msg = original_message
+            record.args = original_args
+
+    def _colorize_message(self, message_text, levelno):
+        for prefix, color in self.MESSAGE_COLORS:
+            if message_text.startswith(prefix):
+                return f"{self.BOLD}{color}{prefix}{self.RESET}{message_text[len(prefix):]}"
+
+        fallback = self.LEVEL_COLORS.get(levelno)
+        if fallback and levelno >= logging.WARNING:
+            return f"{fallback}{message_text}{self.RESET}"
+        return message_text
+
+
+def configure_logging():
+    """Configure console logging with optional ANSI colors when attached to a TTY."""
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    root_logger.setLevel(cfg.log_level)
+
+    use_color = bool(
+        sys.stdout
+        and hasattr(sys.stdout, "isatty")
+        and sys.stdout.isatty()
+        and os.environ.get("NO_COLOR") is None
+    )
+
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(cfg.log_level)
+    handler.setFormatter(ConsoleFormatter(use_color=use_color))
+    root_logger.addHandler(handler)
+
+
+configure_logging()
 logger = logging.getLogger("mqtt-proxy")
 ENV_RELOAD_EXIT_CODE = 75
 
@@ -244,7 +323,8 @@ class MQTTProxy:
                 logger.info("🛡️ Dropping MQTT->Node message (downlink_enabled=False for channel '%s'): %s", 
                             channel_name, topic)
                 return
-        
+
+        self._log_outgoing_queue_enqueue(topic, payload, retained, channel_name)
         # Queue the message instead of sending directly
         self.message_queue.put(topic, payload, retained)
 
@@ -274,7 +354,6 @@ class MQTTProxy:
                 logger.info("Skipping ACK path because no client_ref was provided for topic %s", topic)
 
             if command["mode"] == "group":
-                logger.info("📝 Plaintext MQTT command -> group channel %s: %s", channel_index, text)
                 sent_packet = self.iface.sendText(
                     text,
                     destinationId="^all",
@@ -285,7 +364,6 @@ class MQTTProxy:
                 )
             else:
                 destination_id = command["destination_id"]
-                logger.info("📝 Plaintext MQTT command -> direct %s on channel %s: %s", destination_id, channel_index, text)
                 sent_packet = self.iface.sendText(
                     text,
                     destinationId=destination_id,
@@ -294,6 +372,7 @@ class MQTTProxy:
                     channelIndex=channel_index,
                     hopLimit=hop_limit,
                 )
+            self._log_plaintext_send(command, sent_packet, effective_want_ack)
             if effective_want_ack:
                 self._remember_pending_ack(command, sent_packet)
         except Exception as e:
@@ -408,6 +487,69 @@ class MQTTProxy:
 
         self._publish_ack_event(entry, "sent", source="send")
 
+    def _current_node_id(self):
+        """Return the current local node id when available."""
+        try:
+            node = getattr(self.iface, "localNode", None)
+            node_id = getattr(node, "nodeId", None) if node else None
+            if isinstance(node_id, str) and node_id.strip():
+                return node_id
+
+            node_num = getattr(node, "nodeNum", None) if node else None
+            if isinstance(node_num, int) and node_num != -1:
+                return f"!{int(node_num):08x}"
+        except Exception:
+            pass
+
+        if self.mqtt_handler and getattr(self.mqtt_handler, "prefixed_node_id", None):
+            return self.mqtt_handler.prefixed_node_id
+        return "!unknown"
+
+    @staticmethod
+    def _text_preview(text, limit=120):
+        """Return a compact single-line preview for console logging."""
+        value = str(text or "").replace("\r", " ").replace("\n", " ").strip()
+        if len(value) > limit:
+            return f"{value[:limit - 1]}…"
+        return value
+
+    def _log_plaintext_send(self, command, sent_packet, effective_want_ack):
+        """Emit a concise TX log entry for plaintext sends."""
+        source_id = self._current_node_id()
+        destination_id = command.get("destination_id", "^all")
+        scope = "DM" if command.get("mode") == "direct" else "GROUP"
+        packet_id = getattr(sent_packet, "id", None)
+        packet_label = str(packet_id) if packet_id is not None else "-"
+        hop_limit = command.get("hop_limit")
+        hop_label = hop_limit if hop_limit is not None else "-"
+        logger.info(
+            "TX %s %s -> %s ch=%s hop=%s ack=%s packet=%s text=%s",
+            scope,
+            source_id,
+            destination_id,
+            command.get("channel_index", 0),
+            hop_label,
+            "yes" if effective_want_ack else "no",
+            packet_label,
+            self._text_preview(command.get("text")),
+        )
+
+    def _log_outgoing_queue_enqueue(self, topic, payload, retained, channel_name):
+        """Emit a concise TX log entry for proxied MQTT messages queued for radio send."""
+        if not getattr(cfg, "verbose", False):
+            return
+
+        source_id = self._current_node_id()
+        channel_label = channel_name or "-"
+        logger.info(
+            "TX MQTT %s -> radio topic=%s channel=%s retained=%s bytes=%d",
+            source_id,
+            topic,
+            channel_label,
+            retained,
+            len(payload),
+        )
+
     def _publish_ack_event(self, entry, status, packet=None, source=None, error_reason=None):
         """Publish ACK lifecycle events for plaintext MQTT sends."""
         if not self.mqtt_handler:
@@ -432,10 +574,43 @@ class MQTTProxy:
         if packet is not None:
             payload["response_packet"] = sanitize_value(packet)
 
+        self._log_ack_event(payload)
+
         base_topic = f"{self.mqtt_handler.mqtt_root}/proxy/ack"
         if entry.get("client_ref"):
             retain = bool(getattr(cfg, "mqtt_ack_retain", True))
             self.mqtt_handler.publish_json(f"{base_topic}/{entry['client_ref']}", payload, retain=retain)
+
+    def _log_ack_event(self, payload):
+        """Emit visible console output for ACK lifecycle events."""
+        status = str(payload.get("status") or "").lower()
+        status_label_map = {
+            "sent": "TX SENT",
+            "ack": "TX ACK",
+            "implicit_ack": "TX IMPLICIT_ACK",
+            "nak": "TX NAK",
+            "timeout": "TX TIMEOUT",
+        }
+        label = status_label_map.get(status, f"TX {status.upper()}" if status else "TX ACK_EVENT")
+
+        packet_id = payload.get("packet_id")
+        destination_id = payload.get("destination_id") or "^all"
+        channel_index = payload.get("channel_index")
+        mode = str(payload.get("mode") or "").upper() or "-"
+        client_ref = payload.get("client_ref") or "-"
+        source = payload.get("source") or "-"
+        error_reason = payload.get("error_reason")
+
+        suffix = f"mode={mode} to={destination_id} ch={channel_index} packet={packet_id} ref={client_ref} source={source}"
+        if error_reason and error_reason != "NONE":
+            suffix = f"{suffix} error={error_reason}"
+        if payload.get("text"):
+            suffix = f"{suffix} text={self._text_preview(payload.get('text'))}"
+
+        if status in {"ack", "implicit_ack", "nak", "timeout"}:
+            logger.info("%s %s", label, suffix)
+        elif getattr(cfg, "verbose", False):
+            logger.info("%s %s", label, suffix)
 
     def _resolve_pending_ack(self, packet_id, status, packet=None, source=None, error_reason=None):
         """Resolve a tracked ACK/NAK/timeout by packet id."""

@@ -1,3 +1,33 @@
+# Release beta-0.5
+
+## English
+
+### Console UX
+- Added colored console output for `INFO`, `WARNING`, `ERROR`, and `CRITICAL` levels when running in a real terminal.
+- Highlighted `RX`, `TX`, `TX ACK`, `TX IMPLICIT_ACK`, `TX NAK`, and `TX TIMEOUT` log lines for faster live troubleshooting.
+- Improved plaintext send logging so outgoing group and direct messages now show destination, channel, hop-limit, ACK mode, packet id, and text preview.
+- Added visible console output for ACK lifecycle events that were previously only published back to MQTT.
+- Improved queue send logging so queued MQTT-to-radio traffic is easier to follow during verbose runs.
+
+### Tests
+- Added coverage for visible TX logging in plaintext send flow.
+- Added coverage for visible ACK logging in the ACK lifecycle flow.
+
+## Deutsch
+
+### Konsolen-UX
+- Farbige Konsolenausgabe fuer `INFO`, `WARNING`, `ERROR` und `CRITICAL` in echten Terminals hinzugefuegt.
+- `RX`, `TX`, `TX ACK`, `TX IMPLICIT_ACK`, `TX NAK` und `TX TIMEOUT` werden jetzt optisch hervorgehoben und sind bei Live-Debugging schneller erkennbar.
+- Die Plaintext-Sendeausgabe zeigt jetzt bei Gruppen- und Direktnachrichten Ziel, Kanal, Hop-Limit, ACK-Modus, Paket-ID und Textvorschau.
+- ACK-Lebenszyklus-Ereignisse werden nun nicht mehr nur an MQTT zurueckpubliziert, sondern auch sichtbar in die lokale Konsole geschrieben.
+- Die Queue-Sendeausgabe wurde verbessert, damit MQTT-zu-Radio-Verkehr im Verbose-Modus besser nachverfolgbar ist.
+
+### Tests
+- Testabdeckung fuer sichtbare TX-Logs im Plaintext-Sendepfad hinzugefuegt.
+- Testabdeckung fuer sichtbare ACK-Logs im ACK-Lebenszyklus hinzugefuegt.
+
+---
+
 # Release beta-0.4
 
 ## English

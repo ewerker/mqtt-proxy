@@ -4,6 +4,7 @@ import os
 import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+import logging
 
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -95,3 +96,24 @@ def test_group_plaintext_command_sends_without_queueing():
         hopLimit=None,
     )
     proxy.message_queue.put.assert_not_called()
+
+
+def test_group_plaintext_command_logs_tx_line(caplog):
+    proxy = MQTTProxy()
+    proxy.mqtt_handler = SimpleNamespace(mqtt_root="msh/EU_868", prefixed_node_id="!49b65bc8")
+    proxy.iface = MagicMock()
+    proxy.iface.sendText.return_value = SimpleNamespace(id=4321)
+
+    previous_verbose = MQTT_PROXY_MODULE.cfg.verbose
+    MQTT_PROXY_MODULE.cfg.verbose = True
+    try:
+        with caplog.at_level(logging.INFO):
+            proxy.on_mqtt_message_to_radio(
+                "msh/EU_868/proxy/send/group/0",
+                b"Test TX Ausgabe",
+                False,
+            )
+    finally:
+        MQTT_PROXY_MODULE.cfg.verbose = previous_verbose
+
+    assert "TX GROUP !49b65bc8 -> ^all ch=0 hop=- ack=no packet=4321 text=Test TX Ausgabe" in caplog.text

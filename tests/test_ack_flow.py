@@ -4,6 +4,7 @@ import os
 import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+import logging
 
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -126,6 +127,40 @@ def test_ack_tracking_publishes_sent_and_ack():
     assert ack_statuses[0][0] == "msh/EU_868/proxy/ack/ack-test-1"
     assert ack_statuses[0][2] is True
     assert 4321 not in proxy.pending_acks
+
+
+def test_ack_tracking_logs_visible_console_status(caplog):
+    proxy = MQTTProxy()
+    proxy.mqtt_handler = DummyMqttHandler()
+    proxy.iface = MagicMock()
+    proxy.iface.localNode = SimpleNamespace(nodeNum=0x49B65BC8, nodeId="!49b65bc8")
+    proxy.iface.sendText.return_value = SimpleNamespace(id=4321)
+
+    proxy.on_mqtt_message_to_radio(
+        "msh/EU_868/proxy/send/direct/!13c2288b",
+        json.dumps(
+            {
+                "text": "Hallo ACK",
+                "channel": 0,
+                "want_ack": True,
+                "client_ref": "ack-log-1",
+            }
+        ).encode("utf-8"),
+        False,
+    )
+
+    with caplog.at_level(logging.INFO):
+        proxy.onAckNak(
+            {
+                "from": 0x13C2288B,
+                "decoded": {
+                    "requestId": 4321,
+                    "routing": {"errorReason": "NONE"},
+                },
+            }
+        )
+
+    assert "TX ACK mode=DIRECT to=!13c2288b ch=0 packet=4321 ref=ack-log-1 source=response_handler text=Hallo ACK" in caplog.text
 
 
 def test_ack_retain_can_be_disabled():
