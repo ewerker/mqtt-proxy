@@ -1,6 +1,7 @@
 import os
 import sys
 from types import SimpleNamespace
+import logging
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -107,3 +108,14 @@ def test_listener_sets_retain_flag_by_config():
     listener.handle_receive(make_packet())
 
     assert all(retain is True for _, _, retain in mqtt_handler.published)
+
+
+def test_listener_verbose_logs_rx_text(caplog):
+    cfg = make_config(verbose=True)
+    mqtt_handler = DummyMqttHandler()
+    listener = ReceiveMirrorListener(cfg, lambda: None, lambda: mqtt_handler)
+
+    with caplog.at_level(logging.INFO):
+        listener.handle_receive(make_packet())
+
+    assert "RX GROUP !13c2288b -> ^all ch=- port=TEXT_MESSAGE_APP packet=123 text=Hallo Test" in caplog.text

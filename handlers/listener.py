@@ -75,6 +75,14 @@ def sanitize_value(value: Any) -> Any:
     return str(value)
 
 
+def text_preview(text: Optional[str], limit: int = 120) -> str:
+    """Return a compact one-line preview for console logging."""
+    value = str(text or "").replace("\r", " ").replace("\n", " ").strip()
+    if len(value) > limit:
+        return f"{value[:limit - 1]}…"
+    return value
+
+
 class ReceiveMirrorListener:
     """Mirror Meshtastic receive events to MQTT topics using stable library events."""
 
@@ -99,18 +107,21 @@ class ReceiveMirrorListener:
         base_topic = f"{mqtt_handler.mqtt_root}/proxy/rx/{mqtt_handler.prefixed_node_id}"
         record["gateway_id"] = mqtt_handler.prefixed_node_id
         retain = bool(getattr(self.config, "mqtt_listener_retain", True))
+        scope = record["scope"]
 
         if getattr(self.config, "verbose", False):
+            scope_label = "DM" if scope == "dm" else "GROUP"
             logger.info(
-                "RX %s %s -> %s port=%s text=%s",
-                record["scope"].upper(),
+                "RX %s %s -> %s ch=%s port=%s packet=%s text=%s",
+                scope_label,
                 record["from_id"],
                 record["to_id"] or "^all",
+                record["channel"] if record["channel"] is not None else "-",
                 record["portnum"],
-                (record["text"] or "")[:120],
+                record["packet_id"] if record["packet_id"] is not None else "-",
+                text_preview(record["text"]),
             )
 
-        scope = record["scope"]
         if getattr(self.config, "mqtt_listener_publish_all", True):
             mqtt_handler.publish_json(f"{base_topic}/all", record, retain=retain)
 
