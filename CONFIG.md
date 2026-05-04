@@ -242,6 +242,35 @@ The proxy keeps ACK correlation entries only in memory and expires them after 60
 | `HEALTH_CHECK_STATUS_INTERVAL` | integer | `60` | Status log cadence |
 | `MQTT_RECONNECT_DELAY` | integer | `5` | Delay before MQTT reconnect |
 
+## Presence / Status Topics
+
+The proxy publishes a simple retained presence value so external tooling can see whether the
+gateway is up, down, or unhealthy.
+
+Standard Meshtastic presence topic:
+
+```text
+<root>/2/stat/!<gatewayNodeId>
+```
+
+Payload (plain text, retained):
+
+- `online`  - proxy connected to the broker and running
+- `offline` - proxy cleanly shut down OR broker LWT fired after an unclean exit
+- `broken`  - proxy detected a health failure and is about to exit/restart (degraded)
+
+Optional JSON detail topic (retained):
+
+```text
+<root>/proxy/status/!<gatewayNodeId>
+```
+
+Example payload:
+
+```json
+{"status":"broken","ts":1777929999,"gateway_id":"!5b9efa89","app":"mqtt-proxy","reasons":["MQTT disconnected"]}
+```
+
 Behavior:
 
 - If MQTT disconnects repeatedly, the process exits.

@@ -35,6 +35,72 @@ class MQTTHandler:
         
         self.prefixed_node_id = f"!{node_id}" if node_id else None
         self.current_mqtt_cfg = None
+        self._presence_published = False
+
+    def _presence_topic(self):
+        """Return the standard Meshtastic presence topic for this gateway."""
+        if not getattr(self, "mqtt_root", None) or not self.prefixed_node_id:
+            return None
+        return f"{self.mqtt_root}/2/stat/{self.prefixed_node_id}"
+
+    def _presence_detail_topic(self):
+        """
+        Extra status detail topic (JSON).
+
+        This is intentionally outside the Meshtastic /2/* namespace so it won't be
+        forwarded to the radio by accident.
+        """
+        if not getattr(self, "mqtt_root", None) or not self.prefixed_node_id:
+            return None
+        return f"{self.mqtt_root}/proxy/status/{self.prefixed_node_id}"
+
+    def publish_presence(self, status, detail=None, retain=True):
+        """
+        Publish proxy presence.
+
+        Topics:
+          - <root>/2/stat/!<nodeId>            payload: "online"|"offline"|"broken" (retained)
+          - <root>/proxy/status/!<nodeId>      payload: JSON detail (retained)
+
+        Notes:
+          - The LWT is also set to publish "offline" on <root>/2/stat/!<nodeId> for unclean exits.
+          - For clean shutdowns, callers should explicitly publish "offline" before disconnect().
+        """
+        if not self.client or not self.prefixed_node_id:
+            return False
+
+        status_norm = str(status or "").strip().lower()
+        if status_norm not in ("online", "offline", "broken"):
+            raise ValueError(f"Invalid presence status: {status}")
+
+        topic_stat = self._presence_topic()
+        if not topic_stat:
+            return False
+
+        ok = True
+        try:
+            self.client.publish(topic_stat, payload=status_norm, retain=bool(retain))
+            self._presence_published = True
+        except Exception:
+            ok = False
+
+        # Optional detail JSON for richer monitoring.
+        try:
+            topic_detail = self._presence_detail_topic()
+            if topic_detail:
+                payload = {
+                    "status": status_norm,
+                    "ts": int(time.time()),
+                    "gateway_id": self.prefixed_node_id,
+                    "app": "mqtt-proxy",
+                }
+                if detail and isinstance(detail, dict):
+                    payload.update(detail)
+                self.client.publish(topic_detail, payload=json.dumps(payload, ensure_ascii=False), retain=bool(retain))
+        except Exception:
+            ok = False
+
+        return ok
 
     def configure(self, node_mqtt_config):
         """Configure the MQTT client based on node settings."""
@@ -109,6 +175,7 @@ class MQTTHandler:
             # LWT (Last Will and Testament)
             if self.node_id:
                topic_stat = f"{self.mqtt_root}/2/stat/{self.prefixed_node_id}"
+               # Unclean exit => broker publishes offline (retained).
                self.client.will_set(topic_stat, payload="offline", retain=True)
             
             logger.info(f"🔌 Connecting to {self.mqtt_address}:{self.mqtt_port}...")
@@ -122,6 +189,11 @@ class MQTTHandler:
         """Stop the MQTT loop and disconnect."""
         if self.client:
             try:
+                # Clean shutdown => publish offline explicitly (retained).
+                try:
+                    self.publish_presence("offline", detail={"reason": "shutdown"})
+                except Exception:
+                    pass
                 self.client.loop_stop()
                 self.client.disconnect()
             except Exception:
@@ -232,8 +304,13 @@ class MQTTHandler:
                 root_topic = self.mqtt_root
                 
                 # Publish Online Presence
-                topic_stat = f"{root_topic}/2/stat/{self.prefixed_node_id}"
-                client.publish(topic_stat, payload="online", retain=True)
+                self.publish_presence(
+                    "online",
+                    detail={
+                        "reason": "connected",
+                        "mqtt": {"host": self.mqtt_address, "port": int(self.mqtt_port)},
+                    },
+                )
                 
                 # Subscribe to ALL Encrypted Traffic
                 topic_enc = f"{root_topic}/2/e/#"

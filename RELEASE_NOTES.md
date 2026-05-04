@@ -1,3 +1,35 @@
+# Release beta-0.8
+
+## English
+
+### Presence / Status Topics
+- Added retained gateway presence on `<root>/2/stat/!<gatewayNodeId>`.
+- The proxy publishes:
+  - `online` on connect
+  - `offline` on clean shutdown
+  - `broken` before exiting on health failure
+- The MQTT LWT is configured to publish `offline` on unclean exits.
+- Optional retained JSON detail is published on `<root>/proxy/status/!<gatewayNodeId>` (includes reasons on `broken`).
+
+### Documentation
+- Documented exact presence/status topics and payload semantics in `CONFIG.md`.
+
+## Deutsch
+
+### Presence- / Status-Topics
+- Retained Presence-Status auf `<root>/2/stat/!<gatewayNodeId>` hinzugefuegt.
+- Der Proxy veroeffentlicht:
+  - `online` beim Connect
+  - `offline` bei sauberem Shutdown
+  - `broken` vor dem Beenden bei Health-Fehler
+- MQTT-LWT ist so konfiguriert, dass bei unsauberem Abbruch `offline` veroeffentlicht wird.
+- Optional werden retained JSON-Details auf `<root>/proxy/status/!<gatewayNodeId>` veroeffentlicht (enthaelt bei `broken` u.a. Gruende).
+
+### Dokumentation
+- Presence-/Status-Topics und Payload-Semantik sind in `CONFIG.md` dokumentiert.
+
+---
+
 # Release beta-0.7
 
 ## English

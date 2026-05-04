@@ -833,6 +833,17 @@ class MQTTProxy:
             else:
                 if os.path.exists("/tmp/healthy"):
                     os.remove("/tmp/healthy")
+                # Best-effort: publish an explicit degraded presence before exiting.
+                # The MQTT LWT only triggers for unclean disconnects; for a controlled exit,
+                # we publish our own terminal/degraded status.
+                if self.mqtt_handler:
+                    try:
+                        self.mqtt_handler.publish_presence(
+                            "broken",
+                            detail={"reasons": list(reasons or [])},
+                        )
+                    except Exception:
+                        pass
                 logger.error("❌ Health check FAILED: %s. Exiting...", ", ".join(reasons))
                 sys.exit(1)
         except Exception as e:

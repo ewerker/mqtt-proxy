@@ -1,6 +1,6 @@
 # Meshtastic MQTT Proxy
 
-**Version**: beta-0.7
+**Version**: beta-0.8
 
 ## English
 
@@ -536,30 +536,30 @@ Tests ausfuehren:
 
 English:
 
-This fork currently uses beta tags. The current release is `beta-0.7`.
+This fork currently uses beta tags. The current release is `beta-0.8`.
 
 Typical release flow:
 
 ```bash
-git commit -m "release: beta-0.7"
-git tag beta-0.7
+git commit -m "release: beta-0.8"
+git tag beta-0.8
 git push origin master
-git push origin beta-0.7
-gh release create beta-0.7 --title "beta-0.7" --notes-file latest_notes.md
+git push origin beta-0.8
+gh release create beta-0.8 --title "beta-0.8" --notes-file latest_notes.md
 ```
 
 Deutsch:
 
-Dieser Fork nutzt aktuell Beta-Tags. Das aktuelle Release ist `beta-0.7`.
+Dieser Fork nutzt aktuell Beta-Tags. Das aktuelle Release ist `beta-0.8`.
 
 Typischer Release-Ablauf:
 
 ```bash
-git commit -m "release: beta-0.7"
-git tag beta-0.7
+git commit -m "release: beta-0.8"
+git tag beta-0.8
 git push origin master
-git push origin beta-0.7
-gh release create beta-0.7 --title "beta-0.7" --notes-file latest_notes.md
+git push origin beta-0.8
+gh release create beta-0.8 --title "beta-0.8" --notes-file latest_notes.md
 ```
 
 ## License / Lizenz
