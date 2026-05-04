@@ -392,8 +392,19 @@ class MQTTProxy:
 
         topic_suffix = topic[len(command_prefix):]
         topic_parts = [part for part in topic_suffix.split("/") if part]
-        if len(topic_parts) < 2:
+        if len(topic_parts) < 3:
             logger.warning("⚠️ Ignoring plaintext command with incomplete topic: %s", topic)
+            return {"mode": "invalid", "text": "", "channel_index": 0, "want_ack": False, "hop_limit": None}
+
+        gateway_id = topic_parts[0]
+        expected_gateway_id = self._current_node_id()
+        if gateway_id != expected_gateway_id:
+            logger.warning(
+                "⚠️ Ignoring plaintext command for different gateway %s (local gateway is %s): %s",
+                gateway_id,
+                expected_gateway_id,
+                topic,
+            )
             return {"mode": "invalid", "text": "", "channel_index": 0, "want_ack": False, "hop_limit": None}
 
         body = self._decode_plaintext_command_payload(payload)
@@ -401,10 +412,10 @@ class MQTTProxy:
             logger.warning("⚠️ Ignoring plaintext command without text payload: %s", topic)
             return {"mode": "invalid", "text": "", "channel_index": 0, "want_ack": False, "hop_limit": None}
 
-        mode = topic_parts[0].lower()
+        mode = topic_parts[1].lower()
         if mode == "group":
             try:
-                channel_index = int(topic_parts[1])
+                channel_index = int(topic_parts[2])
             except ValueError:
                 logger.warning("⚠️ Invalid group channel in plaintext command topic: %s", topic)
                 return {"mode": "invalid", "text": "", "channel_index": 0, "want_ack": False, "hop_limit": None}
@@ -412,10 +423,11 @@ class MQTTProxy:
             body["mode"] = "group"
             body["channel_index"] = channel_index
             body["command_topic"] = topic
+            body["gateway_id"] = gateway_id
             return body
 
         if mode == "direct":
-            destination_id = topic_parts[1]
+            destination_id = topic_parts[2]
             if not destination_id.startswith("!"):
                 logger.warning("⚠️ Direct plaintext command target must start with '!': %s", topic)
                 return {"mode": "invalid", "text": "", "channel_index": 0, "want_ack": False, "hop_limit": None}
@@ -423,6 +435,7 @@ class MQTTProxy:
             body["mode"] = "direct"
             body["destination_id"] = destination_id
             body["command_topic"] = topic
+            body["gateway_id"] = gateway_id
             return body
 
         logger.warning("⚠️ Unsupported plaintext command topic: %s", topic)
@@ -576,7 +589,8 @@ class MQTTProxy:
 
         self._log_ack_event(payload)
 
-        base_topic = f"{self.mqtt_handler.mqtt_root}/proxy/ack"
+        gateway_id = entry.get("gateway_id") or self._current_node_id()
+        base_topic = f"{self.mqtt_handler.mqtt_root}/proxy/ack/{gateway_id}"
         if entry.get("client_ref"):
             retain = bool(getattr(cfg, "mqtt_ack_retain", True))
             self.mqtt_handler.publish_json(f"{base_topic}/{entry['client_ref']}", payload, retain=retain)

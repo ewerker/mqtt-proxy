@@ -37,7 +37,7 @@ def test_mqtt_connect_subscribes_plaintext_commands(mock_client_cls):
     handler._on_connect(client, None, None, 0)
 
     client.subscribe.assert_any_call("msh/2/e/#")
-    client.subscribe.assert_any_call("msh/proxy/send/#")
+    client.subscribe.assert_any_call("msh/proxy/send/!1234abcd/#")
 
 
 def test_parse_plaintext_group_command():
@@ -45,7 +45,7 @@ def test_parse_plaintext_group_command():
     proxy.mqtt_handler = SimpleNamespace(mqtt_root="msh/EU_868")
 
     command = proxy._parse_plaintext_command(
-        "msh/EU_868/proxy/send/group/0",
+        "msh/EU_868/proxy/send/!unknown/group/0",
         b"Hallo Gruppe 0",
     )
 
@@ -63,7 +63,7 @@ def test_parse_plaintext_direct_command_json():
         {"text": "Hallo direkt", "channel": 2, "want_ack": True, "hop_limit": 4}
     ).encode("utf-8")
     command = proxy._parse_plaintext_command(
-        "msh/EU_868/proxy/send/direct/!13c2288b",
+        "msh/EU_868/proxy/send/!unknown/direct/!13c2288b",
         payload,
     )
 
@@ -82,7 +82,7 @@ def test_group_plaintext_command_sends_without_queueing():
     proxy.message_queue = MagicMock()
 
     proxy.on_mqtt_message_to_radio(
-        "msh/EU_868/proxy/send/group/1",
+        "msh/EU_868/proxy/send/!unknown/group/1",
         b"Test Kanal 1",
         False,
     )
@@ -109,7 +109,7 @@ def test_group_plaintext_command_logs_tx_line(caplog):
     try:
         with caplog.at_level(logging.INFO):
             proxy.on_mqtt_message_to_radio(
-                "msh/EU_868/proxy/send/group/0",
+                "msh/EU_868/proxy/send/!49b65bc8/group/0",
                 b"Test TX Ausgabe",
                 False,
             )

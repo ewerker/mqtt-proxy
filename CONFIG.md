@@ -82,7 +82,7 @@ ENV_HOT_RELOAD_INTERVAL_SECONDS=2
 | `MQTT_LISTENER_PUBLISH_ALL` | boolean | `true` | Publish to `<root>/proxy/rx/!<gateway>/all` |
 | `MQTT_LISTENER_PUBLISH_PORT` | boolean | `true` | Publish to `<root>/proxy/rx/!<gateway>/port/<PORTNUM>` |
 | `MQTT_LISTENER_PUBLISH_SCOPE` | boolean | `true` | Publish to `<root>/proxy/rx/!<gateway>/scope/<dm|group>` |
-| `MQTT_ACK_RETAIN` | boolean | `true` | Publish ACK lifecycle messages on `<root>/proxy/ack/<client_ref>` with retained flag |
+| `MQTT_ACK_RETAIN` | boolean | `true` | Publish ACK lifecycle messages on `<root>/proxy/ack/!<gateway>/<client_ref>` with retained flag |
 
 Example:
 
@@ -156,15 +156,15 @@ Published topics:
 The proxy subscribes to simple plaintext command topics below the current MQTT root:
 
 ```text
-<root>/proxy/send/group/<channelIndex>
-<root>/proxy/send/direct/!<nodeId>
+<root>/proxy/send/!<gateway>/group/<channelIndex>
+<root>/proxy/send/!<gateway>/direct/!<nodeId>
 ```
 
 Examples:
 
 ```text
-msh/EU_868/proxy/send/group/0
-msh/EU_868/proxy/send/direct/!13c2288b
+msh/EU_868/proxy/send/!49b65bc8/group/0
+msh/EU_868/proxy/send/!49b65bc8/direct/!13c2288b
 ```
 
 Payload options:
@@ -196,7 +196,7 @@ For ACK correlation, include a `client_ref` in the JSON payload:
 ACK lifecycle topics:
 
 ```text
-<root>/proxy/ack/<client_ref>
+<root>/proxy/ack/!<gateway>/<client_ref>
 ```
 
 ACK retain setting:

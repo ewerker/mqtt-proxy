@@ -1,3 +1,39 @@
+# Release beta-0.6
+
+## English
+
+### Gateway-Specific Topics
+- Changed plaintext send subscriptions from shared topics to gateway-specific topics.
+- The proxy now subscribes only to `.../proxy/send/!<gateway>/#` for its own local node id.
+- ACK lifecycle topics are now published under `.../proxy/ack/!<gateway>/<client_ref>`.
+- This makes parallel proxy instances on the same MQTT broker addressable by topic path.
+
+### Documentation
+- Updated `README.md` and `CONFIG.md` to document the new gateway-specific send and ACK topics.
+- Added examples for group send, direct send, and ACK retrieval with a concrete gateway id.
+
+### Tests
+- Updated plaintext command tests to cover gateway-specific send topics.
+- Updated ACK flow tests to cover gateway-specific ACK topics.
+
+## Deutsch
+
+### Gateway-spezifische Topics
+- Die Plaintext-Sendepfade wurden von gemeinsamen Topics auf gateway-spezifische Topics umgestellt.
+- Der Proxy abonniert jetzt nur noch `.../proxy/send/!<gateway>/#` fuer seine eigene lokale Node-ID.
+- ACK-Lifecycle-Topics werden jetzt unter `.../proxy/ack/!<gateway>/<client_ref>` veroeffentlicht.
+- Dadurch lassen sich mehrere Proxy-Instanzen auf demselben MQTT-Broker sauber ueber den Topic-Pfad adressieren.
+
+### Dokumentation
+- `README.md` und `CONFIG.md` wurden auf die neuen gateway-spezifischen Send- und ACK-Topics aktualisiert.
+- Beispiele fuer Gruppensenden, Direktsenden und ACK-Abruf mit konkreter Gateway-ID wurden ergaenzt.
+
+### Tests
+- Die Plaintext-Command-Tests wurden auf gateway-spezifische Sendetopics angepasst.
+- Die ACK-Flow-Tests wurden auf gateway-spezifische ACK-Topics angepasst.
+
+---
+
 # Release beta-0.5
 
 ## English

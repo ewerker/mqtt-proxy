@@ -212,7 +212,7 @@ class MQTTHandler:
                 client.subscribe(topic_enc)
 
                 # Subscribe to simple plaintext commands handled directly by the proxy.
-                topic_send = f"{root_topic}/proxy/send/#"
+                topic_send = f"{root_topic}/proxy/send/{self.prefixed_node_id}/#"
                 logger.info("📥 Subscribing to Plaintext Commands: %s", topic_send)
                 client.subscribe(topic_send)
                 

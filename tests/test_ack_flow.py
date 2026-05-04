@@ -40,13 +40,13 @@ def test_parse_plaintext_command_keeps_client_ref():
     ).encode("utf-8")
 
     command = proxy._parse_plaintext_command(
-        "msh/EU_868/proxy/send/direct/!13c2288b",
+        "msh/EU_868/proxy/send/!unknown/direct/!13c2288b",
         payload,
     )
 
     assert command["want_ack"] is True
     assert command["client_ref"] == "msg-123"
-    assert command["command_topic"] == "msh/EU_868/proxy/send/direct/!13c2288b"
+    assert command["command_topic"] == "msh/EU_868/proxy/send/!unknown/direct/!13c2288b"
 
 
 def test_want_ack_without_client_ref_skips_ack_path():
@@ -66,7 +66,7 @@ def test_want_ack_without_client_ref_skips_ack_path():
     ).encode("utf-8")
 
     proxy.on_mqtt_message_to_radio(
-        "msh/EU_868/proxy/send/direct/!13c2288b",
+        "msh/EU_868/proxy/send/!49b65bc8/direct/!13c2288b",
         payload,
         False,
     )
@@ -101,7 +101,7 @@ def test_ack_tracking_publishes_sent_and_ack():
     ).encode("utf-8")
 
     proxy.on_mqtt_message_to_radio(
-        "msh/EU_868/proxy/send/direct/!13c2288b",
+        "msh/EU_868/proxy/send/!49b65bc8/direct/!13c2288b",
         payload,
         False,
     )
@@ -109,7 +109,7 @@ def test_ack_tracking_publishes_sent_and_ack():
     assert 4321 in proxy.pending_acks
     sent_statuses = [item for item in proxy.mqtt_handler.published if item[1]["status"] == "sent"]
     assert len(sent_statuses) == 1
-    assert sent_statuses[0][0] == "msh/EU_868/proxy/ack/ack-test-1"
+    assert sent_statuses[0][0] == "msh/EU_868/proxy/ack/!49b65bc8/ack-test-1"
     assert sent_statuses[0][2] is True
 
     proxy.onAckNak(
@@ -124,7 +124,7 @@ def test_ack_tracking_publishes_sent_and_ack():
 
     ack_statuses = [item for item in proxy.mqtt_handler.published if item[1]["status"] == "ack"]
     assert len(ack_statuses) == 1
-    assert ack_statuses[0][0] == "msh/EU_868/proxy/ack/ack-test-1"
+    assert ack_statuses[0][0] == "msh/EU_868/proxy/ack/!49b65bc8/ack-test-1"
     assert ack_statuses[0][2] is True
     assert 4321 not in proxy.pending_acks
 
@@ -137,7 +137,7 @@ def test_ack_tracking_logs_visible_console_status(caplog):
     proxy.iface.sendText.return_value = SimpleNamespace(id=4321)
 
     proxy.on_mqtt_message_to_radio(
-        "msh/EU_868/proxy/send/direct/!13c2288b",
+        "msh/EU_868/proxy/send/!49b65bc8/direct/!13c2288b",
         json.dumps(
             {
                 "text": "Hallo ACK",
@@ -184,7 +184,7 @@ def test_ack_retain_can_be_disabled():
         ).encode("utf-8")
 
         proxy.on_mqtt_message_to_radio(
-            "msh/EU_868/proxy/send/direct/!13c2288b",
+            "msh/EU_868/proxy/send/!49b65bc8/direct/!13c2288b",
             payload,
             False,
         )
@@ -212,7 +212,7 @@ def test_ack_tracking_classifies_implicit_ack_like_mass_com():
     ).encode("utf-8")
 
     proxy.on_mqtt_message_to_radio(
-        "msh/EU_868/proxy/send/direct/!13c2288b",
+        "msh/EU_868/proxy/send/!49b65bc8/direct/!13c2288b",
         payload,
         False,
     )
@@ -229,7 +229,7 @@ def test_ack_tracking_classifies_implicit_ack_like_mass_com():
 
     implicit_statuses = [item for item in proxy.mqtt_handler.published if item[1]["status"] == "implicit_ack"]
     assert len(implicit_statuses) == 1
-    assert implicit_statuses[0][0] == "msh/EU_868/proxy/ack/implicit-test-1"
+    assert implicit_statuses[0][0] == "msh/EU_868/proxy/ack/!49b65bc8/implicit-test-1"
     assert 6789 not in proxy.pending_acks
 
 
@@ -251,7 +251,7 @@ def test_ack_tracking_classifies_nak():
     ).encode("utf-8")
 
     proxy.on_mqtt_message_to_radio(
-        "msh/EU_868/proxy/send/direct/!13c2288b",
+        "msh/EU_868/proxy/send/!49b65bc8/direct/!13c2288b",
         payload,
         False,
     )
@@ -268,7 +268,7 @@ def test_ack_tracking_classifies_nak():
 
     nak_statuses = [item for item in proxy.mqtt_handler.published if item[1]["status"] == "nak"]
     assert len(nak_statuses) == 1
-    assert nak_statuses[0][0] == "msh/EU_868/proxy/ack/nak-test-1"
+    assert nak_statuses[0][0] == "msh/EU_868/proxy/ack/!49b65bc8/nak-test-1"
     assert 2468 not in proxy.pending_acks
 
 
@@ -290,7 +290,7 @@ def test_ack_response_packet_is_json_safe():
     ).encode("utf-8")
 
     proxy.on_mqtt_message_to_radio(
-        "msh/EU_868/proxy/send/direct/!13c2288b",
+        "msh/EU_868/proxy/send/!49b65bc8/direct/!13c2288b",
         payload,
         False,
     )
@@ -328,7 +328,7 @@ def test_ack_tracking_times_out_after_one_minute():
     ).encode("utf-8")
 
     proxy.on_mqtt_message_to_radio(
-        "msh/EU_868/proxy/send/group/0",
+        "msh/EU_868/proxy/send/!49b65bc8/group/0",
         payload,
         False,
     )
@@ -337,5 +337,5 @@ def test_ack_tracking_times_out_after_one_minute():
 
     timeout_statuses = [item for item in proxy.mqtt_handler.published if item[1]["status"] == "timeout"]
     assert len(timeout_statuses) == 1
-    assert timeout_statuses[0][0] == "msh/EU_868/proxy/ack/ack-timeout-1"
+    assert timeout_statuses[0][0] == "msh/EU_868/proxy/ack/!49b65bc8/ack-timeout-1"
     assert 5555 not in proxy.pending_acks

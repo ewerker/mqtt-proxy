@@ -1,6 +1,6 @@
 # Meshtastic MQTT Proxy
 
-**Version**: beta-0.4
+**Version**: beta-0.6
 
 ## English
 
@@ -373,14 +373,14 @@ English:
 The proxy subscribes to simple send command topics:
 
 ```text
-msh/<region>/proxy/send/group/<channelIndex>
-msh/<region>/proxy/send/direct/!<nodeId>
+msh/<region>/proxy/send/!<gateway>/group/<channelIndex>
+msh/<region>/proxy/send/!<gateway>/direct/!<nodeId>
 ```
 
 Plain text payload:
 
 ```text
-Topic:   msh/EU_868/proxy/send/group/0
+Topic:   msh/EU_868/proxy/send/!49b65bc8/group/0
 Payload: Hello group 0
 ```
 
@@ -393,7 +393,7 @@ Optional JSON payload:
 ACK lifecycle events are published to:
 
 ```text
-msh/<region>/proxy/ack/<client_ref>
+msh/<region>/proxy/ack/!<gateway>/<client_ref>
 ```
 
 Deutsch:
@@ -401,14 +401,14 @@ Deutsch:
 Der Proxy abonniert einfache Sendebefehls-Topics:
 
 ```text
-msh/<region>/proxy/send/group/<channelIndex>
-msh/<region>/proxy/send/direct/!<nodeId>
+msh/<region>/proxy/send/!<gateway>/group/<channelIndex>
+msh/<region>/proxy/send/!<gateway>/direct/!<nodeId>
 ```
 
 Plaintext-Payload:
 
 ```text
-Topic:   msh/EU_868/proxy/send/group/0
+Topic:   msh/EU_868/proxy/send/!49b65bc8/group/0
 Payload: Hallo Gruppe 0
 ```
 
@@ -421,7 +421,7 @@ Optionale JSON-Payload:
 ACK-Lifecycle-Events werden hier veroeffentlicht:
 
 ```text
-msh/<region>/proxy/ack/<client_ref>
+msh/<region>/proxy/ack/!<gateway>/<client_ref>
 ```
 
 ## Node MQTT Requirements / MQTT-Anforderungen am Node
@@ -524,30 +524,30 @@ Tests ausfuehren:
 
 English:
 
-This fork currently uses beta tags. The current release is `beta-0.4`.
+This fork currently uses beta tags. The current release is `beta-0.6`.
 
 Typical release flow:
 
 ```bash
-git commit -m "release: beta-0.4"
-git tag beta-0.4
+git commit -m "release: beta-0.6"
+git tag beta-0.6
 git push origin master
-git push origin beta-0.4
-gh release create beta-0.4 --title "beta-0.4" --notes-file latest_notes.md
+git push origin beta-0.6
+gh release create beta-0.6 --title "beta-0.6" --notes-file latest_notes.md
 ```
 
 Deutsch:
 
-Dieser Fork nutzt aktuell Beta-Tags. Das aktuelle Release ist `beta-0.4`.
+Dieser Fork nutzt aktuell Beta-Tags. Das aktuelle Release ist `beta-0.6`.
 
 Typischer Release-Ablauf:
 
 ```bash
-git commit -m "release: beta-0.4"
-git tag beta-0.4
+git commit -m "release: beta-0.6"
+git tag beta-0.6
 git push origin master
-git push origin beta-0.4
-gh release create beta-0.4 --title "beta-0.4" --notes-file latest_notes.md
+git push origin beta-0.6
+gh release create beta-0.6 --title "beta-0.6" --notes-file latest_notes.md
 ```
 
 ## License / Lizenz
