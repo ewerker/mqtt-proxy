@@ -37,8 +37,16 @@ Use this for direct USB access to a Meshtastic device. `SERIAL_PORT=auto` tries 
 | `TCP_NODE_PORT` | integer | `4403` | TCP node port |
 | `TCP_TIMEOUT` | integer | `300` | TCP timeout in seconds |
 | `SERIAL_PORT` | string | `/dev/ttyUSB0` | Serial device path, or `auto` for USB auto-detection |
+| `BLE_ADDRESS` | string | empty | Optional BLE device address placeholder for BLE-style setups |
 | `CONFIG_WAIT_TIMEOUT` | integer | `60` | Wait time for node config |
 | `POLL_INTERVAL` | integer | `1` | Poll interval while waiting for config |
+
+Practical meaning:
+
+- `INTERFACE_TYPE=serial` is the normal USB setup.
+- `SERIAL_PORT=auto` is the easiest default on Windows and macOS.
+- `INTERFACE_TYPE=tcp` is useful for virtual nodes, remote endpoints, or lab setups.
+- `LOG_LEVEL` controls severity filtering, while `VERBOSE` enables additional detail lines.
 
 ## Verbose Console Mode
 
@@ -67,6 +75,11 @@ ENV_HOT_RELOAD_ENABLED=true
 ENV_HOT_RELOAD_INTERVAL_SECONDS=2
 ```
 
+Recommended use:
+
+- Keep this enabled during setup and tuning.
+- Disable it only if an external supervisor should own all restarts.
+
 ## Listener Mirror
 
 | Variable | Type | Default | Description |
@@ -85,6 +98,25 @@ ENV_HOT_RELOAD_INTERVAL_SECONDS=2
 | `MQTT_ACK_RETAIN` | boolean | `true` | Publish ACK lifecycle messages on `<root>/proxy/ack/!<gateway>/<client_ref>` with retained flag |
 | `MQTT_PUBLISH_EXPIRY_ENABLED` | boolean | `false` | Enable MQTT 5 Message Expiry on broker publishes |
 | `MQTT_PUBLISH_EXPIRY_SECONDS` | integer | `86400` | Message expiry time in seconds for broker publishes |
+
+When to use which setting:
+
+- `MQTT_LISTENER_ENABLED=true`
+  Turn this on when a browser UI, dashboard, or remote app should consume mesh traffic from MQTT.
+- `MQTT_LISTENER_PORTS`
+  Use this as an allowlist when you want only specific Meshtastic packet families, for example only text and position.
+- `MQTT_LISTENER_EXCLUDE_PORTS`
+  Use this to remove noisy technical traffic without building a strict allowlist.
+- `MQTT_LISTENER_TEXT_ONLY=true`
+  Best for chat-style apps that should ignore telemetry and routing chatter.
+- `MQTT_LISTENER_INCLUDE_RAW=false`
+  Best for smaller payloads and simpler JSON. Set it to `true` when debugging packet internals.
+- `MQTT_LISTENER_PUBLISH_ALL=false` and `MQTT_LISTENER_PUBLISH_PORT=false`
+  Good if you want to avoid duplicate storage and only consume `scope/group` and `scope/dm`.
+- `MQTT_ACK_RETAIN=true`
+  Good when a reconnecting UI should still see the latest ACK state.
+- `MQTT_PUBLISH_EXPIRY_ENABLED=true`
+  Useful when retained proxy topics should disappear automatically after a time.
 
 Example:
 
@@ -147,6 +179,14 @@ Common Meshtastic `portnum` values worth filtering:
 | `MQTT_NODE_LIST_ENABLED` | boolean | `true` | Enable periodic node list snapshots |
 | `MQTT_NODE_LIST_INTERVAL_SECONDS` | integer | `3600` | Publish interval in seconds |
 | `MQTT_NODE_LIST_RETAIN` | boolean | `true` | Publish retained MQTT snapshots |
+
+Practical guidance:
+
+- `MQTT_NODE_LIST_ENABLED=true`
+  Use this for selectors, dashboards, contact lists, and remote admin tooling.
+- `MQTT_NODE_LIST_INTERVAL_SECONDS=3600`
+  A good low-noise default for mostly static node directories.
+- Reduce the interval if your UI depends on faster presence or battery refresh cycles.
 
 Published topics:
 
@@ -233,6 +273,17 @@ The proxy keeps ACK correlation entries only in memory and expires them after 60
 | `MESH_ALLOW_UNCONFIGURED_CHANNELS` | boolean | `true` | Allow forwarding unknown channel names to the radio for virtual channel passthrough |
 | `MQTT_FORWARD_RETAINED` | boolean | `false` | Forward retained MQTT packets |
 
+Practical guidance:
+
+- `MESH_TRANSMIT_DELAY`
+  Keep the default unless you have measured a real need; it prevents bursty radio writes.
+- `MESH_MAX_QUEUE_SIZE`
+  Increase only for sustained burst scenarios. Smaller values can reduce RAM use.
+- `MESH_ALLOW_UNCONFIGURED_CHANNELS=true`
+  Useful for virtual channel / passive monitoring workflows. Turn it off if you want stricter channel enforcement.
+- `MQTT_FORWARD_RETAINED=false`
+  Usually the safest choice, because retained broker messages are often historical state and can flood the radio queue on startup.
+
 ## Health and Recovery
 
 | Variable | Type | Default | Description |
@@ -241,6 +292,12 @@ The proxy keeps ACK correlation entries only in memory and expires them after 60
 | `HEALTH_CHECK_PROBE_INTERVAL` | integer | half of activity timeout | Probe interval |
 | `HEALTH_CHECK_STATUS_INTERVAL` | integer | `60` | Status log cadence |
 | `MQTT_RECONNECT_DELAY` | integer | `5` | Delay before MQTT reconnect |
+
+Practical guidance:
+
+- Increase `HEALTH_CHECK_ACTIVITY_TIMEOUT` if your mesh is intentionally quiet for long periods.
+- Lower `HEALTH_CHECK_STATUS_INTERVAL` if you want more frequent heartbeat-style console summaries.
+- `MQTT_RECONNECT_DELAY` should usually stay small unless you are rate-limited by the broker.
 
 ## Presence / Status Topics
 
@@ -286,6 +343,11 @@ EXTRA_MQTT_ROOTS=msh/US/NC:NC,msh/US/OH:Ohio
 ```
 
 This subscribes to additional encrypted MQTT roots and rewrites them into virtual channel names for passive monitoring without RF crosstalk.
+
+Use this when:
+
+- You want to monitor additional MQTT regions from the same proxy.
+- You need topic-level separation like `msh/US/NC:NC,msh/US/OH:Ohio`.
 
 ## Node MQTT Configuration
 

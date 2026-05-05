@@ -1,6 +1,6 @@
 # Meshtastic MQTT Proxy
 
-**Version**: beta-0.8
+**Version**: beta-0.8.1
 
 ## English
 
@@ -224,6 +224,8 @@ English:
 
 The local `.env` is intentionally ignored by Git. It should contain machine-specific runtime settings. The repository includes `.env.example` and `bundle/.env.example` as copyable templates.
 
+Both templates are self-documented on purpose: the comments next to each setting explain what the option does, when it is useful, and which defaults are sensible for a normal local setup.
+
 Recommended local USB setup:
 
 ```env
@@ -251,6 +253,8 @@ MQTT_NODE_LIST_RETAIN=true
 Deutsch:
 
 Die lokale `.env` ist absichtlich durch Git ignoriert. Sie enthaelt maschinenspezifische Laufzeitwerte. Das Repository enthaelt `.env.example` und `bundle/.env.example` als kopierbare Vorlagen.
+
+Beide Vorlagen sind bewusst selbstdokumentierend aufgebaut: Die Kommentare direkt neben den Einstellungen erklaeren Zweck, typische Einsatzfaelle und sinnvolle Standardwerte fuer ein normales lokales Setup.
 
 Empfohlenes lokales USB-Setup:
 
@@ -304,7 +308,11 @@ MQTT_NODE_LIST_RETAIN=true
 
 See [CONFIG.md](CONFIG.md) for the full reference.
 
+The fastest way to understand the runtime options is usually the commented `.env.example`, because it is grouped by use case and written for copy-and-adjust workflows.
+
 Die vollstaendige Referenz steht in [CONFIG.md](CONFIG.md).
+
+Am schnellsten versteht man die Laufzeitoptionen meist ueber die kommentierte `.env.example`, weil sie nach Einsatzfaellen gruppiert ist und direkt fuer Copy-and-adjust gedacht ist.
 
 ## Listener Topics / Listener-Topics
 
@@ -536,30 +544,30 @@ Tests ausfuehren:
 
 English:
 
-This fork currently uses beta tags. The current release is `beta-0.8`.
+This fork currently uses beta tags. The current release is `beta-0.8.1`.
 
 Typical release flow:
 
 ```bash
-git commit -m "release: beta-0.8"
-git tag beta-0.8
+git commit -m "release: beta-0.8.1"
+git tag beta-0.8.1
 git push origin master
-git push origin beta-0.8
-gh release create beta-0.8 --title "beta-0.8" --notes-file latest_notes.md
+git push origin beta-0.8.1
+gh release create beta-0.8.1 --title "beta-0.8.1" --notes-file latest_notes.md
 ```
 
 Deutsch:
 
-Dieser Fork nutzt aktuell Beta-Tags. Das aktuelle Release ist `beta-0.8`.
+Dieser Fork nutzt aktuell Beta-Tags. Das aktuelle Release ist `beta-0.8.1`.
 
 Typischer Release-Ablauf:
 
 ```bash
-git commit -m "release: beta-0.8"
-git tag beta-0.8
+git commit -m "release: beta-0.8.1"
+git tag beta-0.8.1
 git push origin master
-git push origin beta-0.8
-gh release create beta-0.8 --title "beta-0.8" --notes-file latest_notes.md
+git push origin beta-0.8.1
+gh release create beta-0.8.1 --title "beta-0.8.1" --notes-file latest_notes.md
 ```
 
 ## License / Lizenz

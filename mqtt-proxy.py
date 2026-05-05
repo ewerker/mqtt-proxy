@@ -114,6 +114,26 @@ configure_logging()
 logger = logging.getLogger("mqtt-proxy")
 ENV_RELOAD_EXIT_CODE = 75
 
+
+def build_runtime_notice(stage, **fields):
+    """Build a compact console notice for high log levels."""
+    parts = [stage]
+    for key, value in fields.items():
+        parts.append(f"{key}={value}")
+    return " | ".join(parts)
+
+
+def emit_runtime_notice(stage, **fields):
+    """Write a direct console notice when the configured log level suppresses INFO."""
+    if cfg.log_level <= logging.INFO:
+        return
+
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    line = f"{timestamp} [NOTICE] mqtt-proxy: {build_runtime_notice(stage, **fields)}"
+    if sys.stdout:
+        sys.stdout.write(f"{line}\n")
+        sys.stdout.flush()
+
 class MQTTProxy:
     """
     Main application class for MQTT Proxy.
@@ -148,6 +168,14 @@ class MQTTProxy:
         pub.subscribe(self.on_radio_packet_received, "meshtastic.receive")
 
     def start(self):
+        emit_runtime_notice(
+            "START",
+            app=APP_NAME,
+            version=__version__,
+            interface=cfg.interface_type.upper(),
+            log_level=cfg.log_level_str,
+            verbose=str(bool(getattr(cfg, "verbose", False))).lower(),
+        )
         if getattr(cfg, "verbose", False):
             logger.info("Verbose console output enabled.")
         logger.info("🚀 %s %s starting (interface: %s)...", APP_NAME, __version__, cfg.interface_type.upper())
@@ -294,6 +322,13 @@ class MQTTProxy:
             logger.info("🌐 Initializing MQTT Handler for node !%s...", node_id)
             self.mqtt_handler = MQTTHandler(cfg, node_id, self.on_mqtt_message_to_radio, deduplicator=self.deduplicator)
             self.mqtt_handler.configure(node.moduleConfig.mqtt)
+            emit_runtime_notice(
+                "MQTT_TARGET",
+                node=f"!{node_id}",
+                broker=f"{self.mqtt_handler.mqtt_address}:{self.mqtt_handler.mqtt_port}",
+                root=self.mqtt_handler.mqtt_root,
+                log_level=cfg.log_level_str,
+            )
             self.mqtt_handler.start()
         else:
             logger.warning("⚠️ No MQTT configuration found on node !%s!", node_id)

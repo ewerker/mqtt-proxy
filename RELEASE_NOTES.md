@@ -1,3 +1,27 @@
+# Release beta-0.8.1
+
+## English
+
+### Console Start Notices
+- Added direct console notices for high log levels such as `WARNING`, `ERROR`, and `CRITICAL`.
+- This prevents healthy proxy runs from appearing completely silent when `INFO` output is filtered out.
+- The notice includes app name, version, interface, active log level, verbose state, and MQTT target details.
+
+### Documentation
+- Updated example configuration and release documentation to reflect the new startup visibility behavior.
+
+## Deutsch
+
+### Konsolen-Startmeldungen
+- Direkte Konsolenmeldungen fuer hohe Loglevel wie `WARNING`, `ERROR` und `CRITICAL` wurden hinzugefuegt.
+- Dadurch wirken gesunde Proxy-Laeufe nicht mehr komplett stumm, wenn `INFO`-Ausgaben weggefiltert werden.
+- Die Meldung enthaelt App-Name, Version, Interface, aktiven Loglevel, Verbose-Status und MQTT-Zieldaten.
+
+### Dokumentation
+- Beispiel-Konfiguration und Release-Dokumentation wurden auf das neue Startverhalten aktualisiert.
+
+---
+
 # Release beta-0.8
 
 ## English

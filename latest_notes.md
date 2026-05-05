@@ -1,26 +1,20 @@
 ## English
 
-### Presence / Status Topics
-- The proxy now publishes a retained gateway presence value on `<root>/2/stat/!<gatewayNodeId>`.
-- Payloads:
-  - `online` on successful broker connection
-  - `offline` on clean shutdown (and via MQTT LWT on unclean exit)
-  - `broken` when the proxy detects a health failure and is about to exit/restart
-- Optional retained JSON detail is published on `<root>/proxy/status/!<gatewayNodeId>` (includes `reasons[]` on `broken`).
+### Console Start Notices
+- Added direct console notices for high log levels such as `WARNING`, `ERROR`, and `CRITICAL`.
+- This prevents healthy proxy runs from looking completely silent when `INFO` is filtered out.
+- The notice shows the running app, version, interface, configured log level, verbose state, and MQTT target details.
 
 ### Documentation
-- Added a dedicated "Presence / Status Topics" section to `CONFIG.md` with exact topics and payload semantics.
+- Updated the configuration guidance and example files so high log levels are easier to understand in practice.
 
 ## Deutsch
 
-### Presence- / Status-Topics
-- Der Proxy veroeffentlicht jetzt einen retained Presence-Status auf `<root>/2/stat/!<gatewayNodeId>`.
-- Payloads:
-  - `online` bei erfolgreicher Broker-Verbindung
-  - `offline` bei sauberem Shutdown (und via MQTT-LWT bei unsauberem Abbruch)
-  - `broken` wenn der Proxy einen Health-Fehler erkennt und gleich beendet/neustartet
-- Optional werden retained JSON-Details auf `<root>/proxy/status/!<gatewayNodeId>` veroeffentlicht (enthaelt bei `broken` u.a. `reasons[]`).
+### Konsolen-Startmeldungen
+- Direkte Konsolenmeldungen fuer hohe Loglevel wie `WARNING`, `ERROR` und `CRITICAL` wurden hinzugefuegt.
+- Dadurch wirken gesunde Proxy-Laeufe nicht mehr komplett stumm, wenn `INFO` weggefiltert wird.
+- Die Meldung zeigt App, Version, Interface, eingestellten Loglevel, Verbose-Status und MQTT-Zieldaten.
 
 ### Dokumentation
-- Ein eigener Abschnitt "Presence / Status Topics" wurde in `CONFIG.md` hinzugefuegt (exakte Topics + Semantik).
+- Die Konfigurationshinweise und Beispiel-Dateien wurden so aktualisiert, dass hohe Loglevel im Alltag leichter verstaendlich sind.
 
