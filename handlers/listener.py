@@ -83,6 +83,145 @@ def text_preview(text: Optional[str], limit: int = 120) -> str:
     return value
 
 
+def channel_name_from_index(interface, channel_index: Optional[int]) -> Optional[str]:
+    """Resolve a human-readable channel name from the local node config."""
+    if channel_index is None or not interface:
+        return None
+
+    local_node = getattr(interface, "localNode", None)
+    channels = getattr(local_node, "channels", None)
+    if not channels:
+        return None
+
+    if channel_index < 0 or channel_index >= len(channels):
+        return None
+
+    channel = channels[channel_index]
+    name = getattr(getattr(channel, "settings", None), "name", "") or ""
+    if name:
+        return str(name)
+
+    if channel_index == 0:
+        return "LongFast"
+    return f"CH{channel_index}"
+
+
+def channel_index_from_name(interface, channel_name: Optional[str]) -> Optional[int]:
+    """Resolve a channel index from a human-readable channel name."""
+    if not channel_name or not interface:
+        return None
+
+    local_node = getattr(interface, "localNode", None)
+    channels = getattr(local_node, "channels", None)
+    if not channels:
+        return None
+
+    search_name = str(channel_name).strip().lower()
+    if not search_name:
+        return None
+
+    for index, channel in enumerate(channels):
+        role = getattr(channel, "role", None)
+        if role == 0:
+            continue
+
+        resolved_name = getattr(getattr(channel, "settings", None), "name", "") or ""
+        if not resolved_name:
+            resolved_name = "LongFast" if index == 0 else f"CH{index}"
+
+        if str(resolved_name).strip().lower() == search_name:
+            return index
+
+    return None
+
+
+def normalize_channel_index(value: Any) -> Optional[int]:
+    """Normalize channel index values from packet dicts into an int."""
+    if value is None or value == "":
+        return None
+
+    if isinstance(value, bool):
+        return int(value)
+
+    if isinstance(value, int):
+        return value
+
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.isdigit():
+            return int(stripped)
+
+    return None
+
+
+def resolve_channel_metadata(interface, packet: Dict[str, Any], packet_copy: Dict[str, Any]) -> tuple[Optional[int], Optional[str], Any]:
+    """Resolve best-effort channel metadata for mirrored RX packets."""
+    decoded = packet_copy.get("decoded") or {}
+    raw_packet = packet.get("raw") if isinstance(packet, dict) else None
+    raw_decoded = raw_packet.get("decoded") if isinstance(raw_packet, dict) else None
+    to_id = str(packet_copy.get("toId") or packet_copy.get("to") or "")
+
+    candidate_values = [
+        packet_copy.get("channelIndex"),
+        packet_copy.get("channel_index"),
+        packet_copy.get("channel"),
+        decoded.get("channelIndex"),
+        decoded.get("channel_index"),
+        decoded.get("channel"),
+    ]
+
+    if isinstance(raw_packet, dict):
+        candidate_values.extend(
+            [
+                raw_packet.get("channelIndex"),
+                raw_packet.get("channel_index"),
+                raw_packet.get("channel"),
+            ]
+        )
+    if isinstance(raw_decoded, dict):
+        candidate_values.extend(
+            [
+                raw_decoded.get("channelIndex"),
+                raw_decoded.get("channel_index"),
+                raw_decoded.get("channel"),
+            ]
+        )
+
+    channel_index = None
+    channel_name = None
+    legacy_channel_value = packet_copy.get("channel")
+
+    for candidate in candidate_values:
+        normalized_index = normalize_channel_index(candidate)
+        if normalized_index is not None:
+            channel_index = normalized_index
+            break
+
+        if channel_name is None and isinstance(candidate, str) and candidate.strip():
+            channel_name = candidate.strip()
+
+    if channel_name and channel_index is None:
+        channel_index = channel_index_from_name(interface, channel_name)
+
+    if channel_index is not None:
+        resolved_name = channel_name_from_index(interface, channel_index)
+        if resolved_name:
+            channel_name = resolved_name
+
+    # Meshtastic often omits the channel field for default/public group traffic.
+    # For group packets without any channel metadata, treat them as channel 0.
+    if channel_index is None and to_id == "^all":
+        channel_index = 0
+        resolved_name = channel_name_from_index(interface, channel_index)
+        if resolved_name:
+            channel_name = resolved_name
+
+    return channel_index, channel_name, legacy_channel_value
+
+
 class ReceiveMirrorListener:
     """Mirror Meshtastic receive events to MQTT topics using stable library events."""
 
@@ -110,12 +249,22 @@ class ReceiveMirrorListener:
         scope = record["scope"]
 
         scope_label = "DM" if scope == "dm" else "GROUP"
+        if record["channel_index"] is not None and record["channel_name"]:
+            channel_label = f"{record['channel_index']}({record['channel_name']})"
+        elif record["channel_index"] is not None:
+            channel_label = str(record["channel_index"])
+        elif record["channel_name"]:
+            channel_label = record["channel_name"]
+        elif record["channel"] is not None:
+            channel_label = str(record["channel"])
+        else:
+            channel_label = "-"
         logger.info(
             "RX %s %s -> %s ch=%s port=%s packet=%s text=%s",
             scope_label,
             record["from_id"],
             record["to_id"] or "^all",
-            record["channel"] if record["channel"] is not None else "-",
+            channel_label,
             record["portnum"],
             record["packet_id"] if record["packet_id"] is not None else "-",
             text_preview(record["text"]),
@@ -129,6 +278,21 @@ class ReceiveMirrorListener:
 
         if getattr(self.config, "mqtt_listener_publish_scope", True):
             self._publish_record(mqtt_handler, f"{base_topic}/scope/{scope}", record, retain)
+
+        if scope == "group" and record.get("channel_index") is not None:
+            self._publish_record(
+                mqtt_handler,
+                f"{base_topic}/group/{record['channel_index']}",
+                record,
+                retain,
+            )
+        elif scope == "dm" and record.get("from_id"):
+            self._publish_record(
+                mqtt_handler,
+                f"{base_topic}/direct/{record['from_id']}",
+                record,
+                retain,
+            )
 
     def _publish_record(self, mqtt_handler, topic: str, record: Dict[str, Any], retain: bool) -> None:
         """Publish a mirrored RX record and optionally log the outgoing MQTT dataset."""
@@ -168,6 +332,7 @@ class ReceiveMirrorListener:
     def _build_record(self, packet: Dict[str, Any]) -> Dict[str, Any]:
         interface = self.get_interface()
         packet_copy = sanitize_value(dict(packet))
+        channel_index, channel_name, legacy_channel_value = resolve_channel_metadata(interface, packet, packet_copy)
         packet_copy.pop("raw", None)
         decoded = dict(packet_copy.get("decoded") or {})
         packet_copy["decoded"] = decoded
@@ -194,7 +359,9 @@ class ReceiveMirrorListener:
             "rx_snr": packet_copy.get("rxSnr"),
             "rx_rssi": packet_copy.get("rxRssi"),
             "hop_limit": packet_copy.get("hopLimit"),
-            "channel": packet_copy.get("channel"),
+            "channel": legacy_channel_value,
+            "channel_index": channel_index,
+            "channel_name": channel_name,
         }
         if getattr(self.config, "mqtt_listener_include_raw", True):
             record["packet"] = packet_copy

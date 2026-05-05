@@ -1,6 +1,6 @@
 # Meshtastic MQTT Proxy
 
-**Version**: beta-0.8.1
+**Version**: beta-0.9
 
 ## English
 
@@ -325,9 +325,22 @@ msh/<region>/proxy/rx/!<gateway>/all
 msh/<region>/proxy/rx/!<gateway>/port/<PORTNUM>
 msh/<region>/proxy/rx/!<gateway>/scope/dm
 msh/<region>/proxy/rx/!<gateway>/scope/group
+msh/<region>/proxy/rx/!<gateway>/group/<channelIndex>
+msh/<region>/proxy/rx/!<gateway>/direct/!<fromNodeId>
 ```
 
 The listener is additive. The original node-to-broker and broker-to-node proxy path remains active.
+
+Mirrored RX JSON records now expose channel metadata in a clearer form:
+
+- `channel_index`
+  Best-effort numeric channel index such as `0` or `1`
+- `channel_name`
+  Best-effort resolved local channel name such as `LongFast` or `RichtGroup`
+- `channel`
+  Legacy/raw channel value from the received packet for backward compatibility
+
+For new integrations, prefer `channel_index` and `channel_name`. Keep `channel` only as a legacy fallback because some Meshtastic receive packets do not populate it reliably.
 
 When `MQTT_PUBLISH_EXPIRY_ENABLED=true`, the proxy switches its broker client to MQTT 5 and attaches a Message Expiry Interval to published topics. This is useful for retained JSON topics that should disappear automatically after a defined time, for example after `86400` seconds (24 hours).
 
@@ -348,9 +361,22 @@ msh/<region>/proxy/rx/!<gateway>/all
 msh/<region>/proxy/rx/!<gateway>/port/<PORTNUM>
 msh/<region>/proxy/rx/!<gateway>/scope/dm
 msh/<region>/proxy/rx/!<gateway>/scope/group
+msh/<region>/proxy/rx/!<gateway>/group/<channelIndex>
+msh/<region>/proxy/rx/!<gateway>/direct/!<fromNodeId>
 ```
 
 Der Listener ist additiv. Der urspruengliche Node-zu-Broker- und Broker-zu-Node-Proxy-Pfad bleibt aktiv.
+
+Gespiegelte RX-JSON-Datensaetze enthalten jetzt klarere Channel-Felder:
+
+- `channel_index`
+  Best-Effort numerischer Channel-Index wie `0` oder `1`
+- `channel_name`
+  Best-Effort aufgeloester lokaler Channel-Name wie `LongFast` oder `RichtGroup`
+- `channel`
+  Alter/roher Channel-Wert aus dem empfangenen Paket zur Rueckwaertskompatibilitaet
+
+Fuer neue Integrationen sollten `channel_index` und `channel_name` bevorzugt werden. `channel` sollte nur noch als Legacy-Fallback dienen, weil manche Meshtastic-RX-Pakete diesen Wert nicht verlaesslich fuellen.
 
 Wenn `MQTT_PUBLISH_EXPIRY_ENABLED=true` gesetzt ist, nutzt der Proxy fuer Broker-Publishes MQTT 5 und haengt eine Message Expiry Interval an. Das ist besonders fuer retained JSON-Topics nuetzlich, die nach einer definierten Zeit automatisch verschwinden sollen, zum Beispiel nach `86400` Sekunden (24 Stunden).
 
@@ -544,30 +570,30 @@ Tests ausfuehren:
 
 English:
 
-This fork currently uses beta tags. The current release is `beta-0.8.1`.
+This fork currently uses beta tags. The current release is `beta-0.9`.
 
 Typical release flow:
 
 ```bash
-git commit -m "release: beta-0.8.1"
-git tag beta-0.8.1
+git commit -m "release: beta-0.9"
+git tag beta-0.9
 git push origin master
-git push origin beta-0.8.1
-gh release create beta-0.8.1 --title "beta-0.8.1" --notes-file latest_notes.md
+git push origin beta-0.9
+gh release create beta-0.9 --title "beta-0.9" --notes-file latest_notes.md
 ```
 
 Deutsch:
 
-Dieser Fork nutzt aktuell Beta-Tags. Das aktuelle Release ist `beta-0.8.1`.
+Dieser Fork nutzt aktuell Beta-Tags. Das aktuelle Release ist `beta-0.9`.
 
 Typischer Release-Ablauf:
 
 ```bash
-git commit -m "release: beta-0.8.1"
-git tag beta-0.8.1
+git commit -m "release: beta-0.9"
+git tag beta-0.9
 git push origin master
-git push origin beta-0.8.1
-gh release create beta-0.8.1 --title "beta-0.8.1" --notes-file latest_notes.md
+git push origin beta-0.9
+gh release create beta-0.9 --title "beta-0.9" --notes-file latest_notes.md
 ```
 
 ## License / Lizenz

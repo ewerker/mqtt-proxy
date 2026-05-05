@@ -144,9 +144,22 @@ Published topics:
 <root>/proxy/rx/!<gateway>/port/<PORTNUM>
 <root>/proxy/rx/!<gateway>/scope/dm
 <root>/proxy/rx/!<gateway>/scope/group
+<root>/proxy/rx/!<gateway>/group/<channelIndex>
+<root>/proxy/rx/!<gateway>/direct/!<fromNodeId>
 ```
 
 The listener is additive. The original bidirectional `mqttClientProxyMessage` path remains active.
+
+Mirrored RX JSON records include these channel-related fields:
+
+- `channel_index`
+  Best-effort numeric channel index, for example `0` or `1`
+- `channel_name`
+  Best-effort resolved local channel name, for example `LongFast` or `RichtGroup`
+- `channel`
+  Legacy/raw value from the Meshtastic receive packet
+
+For new consumers, prefer `channel_index` and `channel_name`. Keep `channel` only as a compatibility fallback because some Meshtastic RX packets leave it empty.
 
 If `MQTT_PUBLISH_EXPIRY_ENABLED=true`, the proxy uses MQTT 5 for broker communication and attaches a Message Expiry Interval to its PUBLISH packets. This controls how long queued or retained broker messages persist before the broker deletes them.
 
